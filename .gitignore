@@ -1,0 +1,20 @@
+build
+deploy
+*.log
+bin
+obj
+__pycache__
+.paket
+paket-files
+packages
+.vscode
+.ionide
+.fake
+.idea
+.DS_Store
+node_modules
+*.csv
+
+# vim
+**/.*.swo
+**/.*.swp
