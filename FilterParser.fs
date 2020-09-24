@@ -91,10 +91,6 @@ let fcombined =
     (left .>>. fTableOperators .>>. right)
     |>> (fun ((a, tableOp), b) -> Filter.Combined(a, tableOp, b))
 
-let fnot =
-    let not = pstring "not"
-    not >>. fFilter
-
 let fPartitionKey =
     let name = pstringCI "partitionKey"
     let nameAndSpaces = name .>> spaces <?> "Name"
@@ -127,8 +123,7 @@ do fFilterRef
    := choice [ fPartitionKey
                fRowKey
                fProperty
-               fcombined
-               fnot ]
+               fcombined  ]
 
 let filter = spaces >>. fFilter .>> spaces .>> eof
 
