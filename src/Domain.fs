@@ -66,8 +66,13 @@ type Command =
   | Get of Table: string * PartitionKey: string * RowKey: string
   | Query of Table: string * Filter: string
 
+
+type ConflictReason =
+  | TableAlreadyExists
+
 type CommandResult =
   | Ack
+  | Conflict of ConflictReason
   | GetResponse of TableRow
   | QueryResponse of TableRow list
   | NotFound

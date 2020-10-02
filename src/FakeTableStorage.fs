@@ -20,8 +20,9 @@ open Domain
 let commandHandler (tables: Tables) command =
   match command with
   | CreateTable name ->
-      tables.Add(name, ResizeArray())
-      Ack
+      match tables.TryAdd(name, ResizeArray()) with
+      | true -> Ack
+      | false -> Conflict TableAlreadyExists
   | InsertOrMerge(table, row) ->
       let table = tables.[table]
       table.Add row
@@ -120,10 +121,10 @@ let handler commandHandler (ctx: HttpContext) =
   task {
     match ctx.Request with
     | CreateTable name ->
-        CreateTable name
-        |> commandHandler
-        |> ignore
-        ctx.Response.StatusCode <- 204
+        match CreateTable name |> commandHandler with
+        | Ack -> ctx.Response.StatusCode <- 204
+        | Conflict reason -> ctx.Response.StatusCode <- 409
+        | _ -> ctx.Response.StatusCode <- 404
     | InsertOrMergeEntity(table, partitionKey, rowKey, fields) ->
         InsertOrMerge
           (table,

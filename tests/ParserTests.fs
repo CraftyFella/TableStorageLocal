@@ -6,200 +6,198 @@ open System
 
 [<Tests>]
 let parserTests =
-    testList
-        "ParserTests"
-        [ test "partition key" {
+  testList
+    "ParserTests"
+    [ test "partition key" {
 
-              let actual =
-                  "PartitionKey eq 'pk'" |> FilterParser.fParse
+        let actual =
+          "PartitionKey eq 'pk'" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.PartitionKey(QueryComparison.Equal, "pk"))
+        let expected =
+          Ok(Filter.PartitionKey(QueryComparison.Equal, "pk"))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "row key" {
+      test "row key" {
 
-              let actual = "RowKey eq 'rk'" |> FilterParser.fParse
+        let actual = "RowKey eq 'rk'" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.RowKey(QueryComparison.Equal, "rk"))
+        let expected =
+          Ok(Filter.RowKey(QueryComparison.Equal, "rk"))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "property (String)" {
+      test "property (String)" {
 
-              let actual =
-                  "Field eq 'value'" |> FilterParser.fParse
+        let actual =
+          "Field eq 'value'" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.String "value"))
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.String "value"))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "property (Long)" {
+      test "property (Long)" {
 
-              let actual = "Field eq 1L" |> FilterParser.fParse
+        let actual = "Field eq 1L" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Long 1L))
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Long 1L))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "property (Guid)" {
+      test "property (Guid)" {
 
-              let actual =
-                  "Field eq guid'd80d1dea-830a-43ab-bcc9-01386e037469'"
-                  |> FilterParser.fParse
+        let actual =
+          "Field eq guid'd80d1dea-830a-43ab-bcc9-01386e037469'"
+          |> FilterParser.fParse
 
-              let expected =
-                  Ok
-                      (Filter.Property
-                          ("Field",
-                           QueryComparison.Equal,
-                           FieldValue.Guid(Guid.Parse("d80d1dea-830a-43ab-bcc9-01386e037469"))))
+        let expected =
+          Ok
+            (Filter.Property
+              ("Field", QueryComparison.Equal, FieldValue.Guid(Guid.Parse("d80d1dea-830a-43ab-bcc9-01386e037469"))))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "property (Date)" {
+      test "property (Date)" {
 
-              let actual =
-                  "Field ge datetime'2000-10-01T01:11:22.931Z'"
-                  |> FilterParser.fParse
+        let actual =
+          "Field ge datetime'2000-10-01T01:11:22.931Z'"
+          |> FilterParser.fParse
 
-              let expected =
-                  Ok
-                      (Filter.Property
-                          ("Field",
-                           QueryComparison.GreaterThanOrEqual,
-                           FieldValue.Date(DateTimeOffset.Parse("2000-10-01T01:11:22.931Z"))))
+        let expected =
+          Ok
+            (Filter.Property
+              ("Field",
+               QueryComparison.GreaterThanOrEqual,
+               FieldValue.Date(DateTimeOffset.Parse("2000-10-01T01:11:22.931Z"))))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "property (Bool)" {
+      test "property (Bool)" {
 
-              let actual = "Field eq true" |> FilterParser.fParse
+        let actual = "Field eq true" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Bool true))
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Bool true))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "property (Int)" {
+      test "property (Int)" {
 
-              let actual = "Field eq 1" |> FilterParser.fParse
+        let actual = "Field eq 1" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Int 1))
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Int 1))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
 
-          test "property (Double)" {
+      test "property (Double)" {
 
-              let actual = "Field eq 1.0" |> FilterParser.fParse
+        let actual = "Field eq 1.0" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Double 1.))
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Double 1.))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "property (Binary)" {
+      test "property (Binary)" {
 
-              let actual =
-                  "Field eq binary'aGVsbG8='" |> FilterParser.fParse
+        let actual =
+          "Field eq binary'aGVsbG8='" |> FilterParser.fParse
 
-              let expected =
-                  Ok
-                      (Filter.Property
-                          ("Field",
-                           QueryComparison.Equal,
-                           FieldValue.Binary [| 104uy
-                                                101uy
-                                                108uy
-                                                108uy
-                                                111uy |]))
+        let expected =
+          Ok
+            (Filter.Property
+              ("Field",
+               QueryComparison.Equal,
+               FieldValue.Binary [| 104uy
+                                    101uy
+                                    108uy
+                                    108uy
+                                    111uy |]))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "combined (And)" {
+      test "combined (And)" {
 
-              let left =
-                  "(PartitionKey eq 'pk') and (RowKey eq 'rk')"
-                  |> FilterParser.fParse
+        let left =
+          "(PartitionKey eq 'pk') and (RowKey eq 'rk')"
+          |> FilterParser.fParse
 
-              let expected =
-                  Ok
-                      (Filter.Combined
-                          (Filter.PartitionKey(QueryComparison.Equal, "pk"),
-                           TableOperators.And,
-                           Filter.RowKey(QueryComparison.Equal, "rk")))
+        let expected =
+          Ok
+            (Filter.Combined
+              (Filter.PartitionKey(QueryComparison.Equal, "pk"),
+               TableOperators.And,
+               Filter.RowKey(QueryComparison.Equal, "rk")))
 
-              Expect.equal left expected "unexpected result"
-          }
+        Expect.equal left expected "unexpected result"
+      }
 
-          test "combined (Or))" {
+      test "combined (Or))" {
 
-              let left =
-                  "(PartitionKey eq 'pk') or (RowKey eq 'rk')"
-                  |> FilterParser.fParse
+        let left =
+          "(PartitionKey eq 'pk') or (RowKey eq 'rk')"
+          |> FilterParser.fParse
 
-              let expected =
-                  Ok
-                      (Filter.Combined
-                          (Filter.PartitionKey(QueryComparison.Equal, "pk"),
-                           TableOperators.Or,
-                           Filter.RowKey(QueryComparison.Equal, "rk")))
+        let expected =
+          Ok
+            (Filter.Combined
+              (Filter.PartitionKey(QueryComparison.Equal, "pk"),
+               TableOperators.Or,
+               Filter.RowKey(QueryComparison.Equal, "rk")))
 
-              Expect.equal left expected "unexpected result"
-          }
+        Expect.equal left expected "unexpected result"
+      }
 
-          test "greater than" {
+      test "greater than" {
 
-              let actual = "Field gt 1L" |> FilterParser.fParse
+        let actual = "Field gt 1L" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.Property("Field", QueryComparison.GreaterThan, FieldValue.Long 1L))
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.GreaterThan, FieldValue.Long 1L))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "greater than or equal" {
+      test "greater than or equal" {
 
-              let actual = "Field ge 1L" |> FilterParser.fParse
+        let actual = "Field ge 1L" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.Property("Field", QueryComparison.GreaterThanOrEqual, FieldValue.Long 1L))
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.GreaterThanOrEqual, FieldValue.Long 1L))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "less than" {
+      test "less than" {
 
-              let actual = "Field lt 1L" |> FilterParser.fParse
+        let actual = "Field lt 1L" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.Property("Field", QueryComparison.LessThan, FieldValue.Long 1L))
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.LessThan, FieldValue.Long 1L))
 
-              Expect.equal actual expected "unexpected result"
-          }
+        Expect.equal actual expected "unexpected result"
+      }
 
-          test "less than or equal" {
+      test "less than or equal" {
 
-              let actual = "Field le 1L" |> FilterParser.fParse
+        let actual = "Field le 1L" |> FilterParser.fParse
 
-              let expected =
-                  Ok(Filter.Property("Field", QueryComparison.LessThanOrEqual, FieldValue.Long 1L))
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.LessThanOrEqual, FieldValue.Long 1L))
 
-              Expect.equal actual expected "unexpected result"
-          } ]
+        Expect.equal actual expected "unexpected result"
+      } ]
