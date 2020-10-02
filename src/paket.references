@@ -1,0 +1,6 @@
+FParsec
+Microsoft.AspNetCore.Server.Kestrel
+Microsoft.Azure.Cosmos.Table
+Newtonsoft.Json
+Ply
+FSharp.Core

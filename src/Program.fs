@@ -8,14 +8,15 @@ let main argv =
   let table = tables.Client.GetTableReference "test"
   table.CreateIfNotExists() |> ignore
   let fields =
-    [ ("StringField", EntityProperty.GeneratePropertyForString("StringValue"))
+    [ ("StringField", EntityProperty.GeneratePropertyForString("StringValue1"))
       ("DateField", EntityProperty.GeneratePropertyForDateTimeOffset(Nullable DateTimeOffset.UtcNow))
       ("IntField", EntityProperty.GeneratePropertyForInt(Nullable 1))
       ("LongField", EntityProperty.GeneratePropertyForLong(Nullable 1L))
       ("GuidField", EntityProperty.GeneratePropertyForGuid(Nullable(Guid.NewGuid())))
       ("FloatField", EntityProperty.GeneratePropertyForDouble(Nullable 1.))
       ("BoolField", EntityProperty.GeneratePropertyForBool(Nullable true))
-      ("ByteArrayField", EntityProperty.GeneratePropertyForByteArray([| 104uy; 101uy; 108uy; 108uy; 111uy |])) ]
+      ("ByteArrayField", EntityProperty.GeneratePropertyForByteArray([| 104uy; 101uy; 108uy; 108uy; 111uy |]))
+      ]
     |> dict
 
   DynamicTableEntity("pk", "rk", "*", fields)
@@ -47,9 +48,9 @@ let main argv =
   // let query = TableQuery<DynamicTableEntity>().Where combined2
   // let filter = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk")
   // let filter = TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, "rk")
-  let left = TableQuery.GenerateFilterCondition("StringField", QueryComparisons.Equal, "StringValue2")
+  let left = TableQuery.GenerateFilterConditionForDouble("FloatField", QueryComparisons.Equal, 2.)
   let right = TableQuery.GenerateFilterConditionForLong("LongField", QueryComparisons.GreaterThanOrEqual, 2L)
-  let filter = TableQuery.CombineFilters(left, Microsoft.Azure.Cosmos.Table.TableOperators.And, right)
+  let filter = TableQuery.CombineFilters(left, Microsoft.Azure.Cosmos.Table.TableOperators.Or, right)
   let query = TableQuery<DynamicTableEntity>().Where filter
   let token = TableContinuationToken()
   let results = table.ExecuteQuerySegmentedAsync(query, token).Result

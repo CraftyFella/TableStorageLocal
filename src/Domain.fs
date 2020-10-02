@@ -40,7 +40,7 @@ type TableOperators =
 
 [<RequireQualifiedAccess>]
 type Filter =
-  | PartionKey of QueryComparison * string
+  | PartitionKey of QueryComparison * string
   | RowKey of QueryComparison * string
   | Property of name: string * QueryComparison * FieldValue
   | Combined of Filter * TableOperators * Filter
@@ -54,7 +54,24 @@ type TableFields = TableField list
 type TableRow =
   { PartitonKey: string
     RowKey: string
-    Fields: TableFields }
+    Fields: TableFields }   // SHould be a dictionary to stop duplicate fields.
+
+type Tables = Dictionary<string, ResizeArray<TableRow>>
+
+type Command =
+  | CreateTable of Name: string
+  | Insert of Table: string * TableRow
+  | InsertOrMerge of Table: string * TableRow
+  | Delete of Table: string * PartitionKey: string * RowKey: string
+  | Get of Table: string * PartitionKey: string * RowKey: string
+  | Query of Table: string * Filter: string
+
+type CommandResult =
+  | Ack
+  | GetResponse of TableRow
+  | QueryResponse of TableRow list
+  | NotFound
+
 
 module TableFields =
   open Newtonsoft.Json.Linq
@@ -139,19 +156,3 @@ module TableRow =
     let fields = TableFields.toJProperties tableRow.Fields
 
     JObject(requiredFields |> List.append fields)
-
-type Tables = Dictionary<string, ResizeArray<TableRow>>
-
-type Command =
-  | CreateTable of Name: string
-  | Insert of Table: string * TableRow
-  | InsertOrMerge of Table: string * TableRow
-  | Delete of Table: string * PartitionKey: string * RowKey: string
-  | Get of Table: string * PartitionKey: string * RowKey: string
-  | Query of Table: string * Filter: string
-
-type CommandResult =
-  | Ack
-  | GetResponse of TableRow
-  | QueryResponse of TableRow list
-  | NotFound

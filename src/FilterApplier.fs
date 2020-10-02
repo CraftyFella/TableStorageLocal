@@ -61,7 +61,7 @@ let rec applyFilter (rows: TableRow seq) filter =
     | QueryComparison.LessThanOrEqual -> fieldsLessThanOrEqual (left, right)
 
   match filter with
-  | Filter.PartionKey(qc, pk) ->
+  | Filter.PartitionKey(qc, pk) ->
       rows |> Seq.filter (fun r -> compareFields (FieldValue.String r.PartitonKey) qc (FieldValue.String pk))
   | Filter.RowKey(qc, rk) ->
       rows |> Seq.filter (fun r -> compareFields (FieldValue.String r.RowKey) qc (FieldValue.String rk))

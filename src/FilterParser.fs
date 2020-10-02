@@ -16,6 +16,15 @@ let fvBool =
 let fvLong =
     pint64 .>> pchar 'L' |>> (FieldValue.Long)
 
+let fvDouble =
+    let number = many1Chars digit
+    number
+    .>>. pchar '.'
+    .>>. number
+    |>> (fun ((a, _), b) ->
+        let floatString = (sprintf "%s.%s" a b)
+        FieldValue.Double(Double.Parse floatString))
+
 let fvInt = pint32 |>> (FieldValue.Int)
 
 let fvDate =
@@ -24,6 +33,13 @@ let fvDate =
     prefix
     >>. (between quote quote (regex "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z")
          |>> (DateTimeOffset.Parse >> FieldValue.Date))
+
+let fvBinary =
+    let prefix = pstring "binary"
+    let quote = pchar '\''
+    prefix
+    >>. (between quote quote (regex "(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?")
+         |>> (Convert.FromBase64String >> FieldValue.Binary))
 
 let fvGuid =
     let prefix = pstring "guid"
@@ -40,12 +56,15 @@ let fvString =
     between quote quote manyLettersOrNumbers
     |>> FieldValue.String
 
+let fvLongOrBackTrackToInt = (attempt fvLong) <|> fvInt
+let fvDoubleOrBackTrackTo parser = (attempt fvDouble) <|> parser
+
 let fFieldValue =
     fvGuid
     <|> fvDate
+    <|> fvBinary
     <|> fvBool
-    <|> fvLong
-    <|> fvInt
+    <|> fvDoubleOrBackTrackTo fvLongOrBackTrackToInt
     <|> fvString
 
 let fQueryComparison =
@@ -103,7 +122,7 @@ let fPartitionKey =
     nameAndSpaces
     >>. queryComparison
     .>>. filterValue
-    |>> (fun (qc, (FieldValue.String (fv))) -> Filter.PartionKey(qc, fv))
+    |>> (fun (qc, (FieldValue.String (fv))) -> Filter.PartitionKey(qc, fv))
 
 let fRowKey =
     let name = pstringCI "rowkey"
@@ -123,7 +142,7 @@ do fFilterRef
    := choice [ fPartitionKey
                fRowKey
                fProperty
-               fcombined  ]
+               fcombined ]
 
 let filter = spaces >>. fFilter .>> spaces .>> eof
 
