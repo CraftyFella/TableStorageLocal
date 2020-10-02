@@ -20,23 +20,26 @@ open Domain
 let commandHandler (tables: Tables) command =
   match command with
   | CreateTable name ->
-      match tables.TryAdd(name, ResizeArray()) with
+      match tables.TryAdd(name, Map.empty) with
       | true -> Ack
       | false -> Conflict TableAlreadyExists
-  | InsertOrMerge(table, row) ->
+  | InsertOrMerge (table, (keys, fields)) ->
       let table = tables.[table]
-      table.Add row
+      table.Add(keys, fields) |> ignore
       Ack
-  | Insert(table, row) ->
+  | Insert (table, (keys, fields)) ->
       let table = tables.[table]
-      table.Add row
-      Ack
-  | Get(table, partitionKey, rowKey) ->
+      match table.ContainsKey keys with
+      | true -> Conflict KeyAlreadyExists
+      | false ->
+          table.Add(keys, fields) |> ignore
+          Ack
+  | Get (table, keys) ->
       let table = tables.[table]
-      match table |> Seq.tryFind (fun x -> x.PartitonKey = partitionKey && x.RowKey = rowKey) with
-      | Some row -> GetResponse row
+      match table.TryGetValue(keys) with
+      | true, fields -> GetResponse(keys, fields)
       | _ -> NotFound
-  | Query(table, filter) ->
+  | Query (table, filter) ->
       let table = tables.[table]
       printfn "Filter: %A" filter
 
@@ -46,25 +49,24 @@ let commandHandler (tables: Tables) command =
         | Result.Error error ->
             printfn "Filter: %A;\nError: %A" filter error
             Seq.empty
-      matchingRows
-      |> Seq.toList
-      |> QueryResponse
-  | Delete(table, partitionKey, rowKey) ->
+
+      matchingRows |> Seq.toList |> QueryResponse
+  | Delete (table, keys) ->
       let table = tables.[table]
-      table.RemoveAll(fun x -> x.PartitonKey = partitionKey && x.RowKey = rowKey) |> ignore
+      table.Remove(keys) |> ignore
       Ack
 
 type HttpRequest with
   member __.BodyString = (new StreamReader(__.Body)).ReadToEnd()
 
-let private findPort() =
+let private findPort () =
   TcpListener(IPAddress.Loopback, 0)
   |> fun l ->
-    l.Start()
-    (l, (l.LocalEndpoint :?> IPEndPoint).Port)
-    |> fun (l, p) ->
-      l.Stop()
-      p
+       l.Start()
+       (l, (l.LocalEndpoint :?> IPEndPoint).Port)
+       |> fun (l, p) ->
+            l.Stop()
+            p
 
 let (|Regex|_|) pattern input =
   match Regex.Match(input, pattern) with
@@ -84,8 +86,7 @@ let private (|QueryEntity|_|) (request: HttpRequest) =
       | false -> None
   | _ -> None
 
-let private (|CreateTable|InsertEntity|InsertOrMergeEntity|InsertOrReplaceEntity|DeleteEntity|GetEntity|NotFound|) (request: HttpRequest)
-  =
+let private (|CreateTable|InsertEntity|InsertOrMergeEntity|InsertOrReplaceEntity|DeleteEntity|GetEntity|NotFound|) (request: HttpRequest) =
   match request.Path.Value with
   | "/devstoreaccount1/Tables()" ->
       let jObject = JObject.Parse request.BodyString
@@ -123,42 +124,50 @@ let handler commandHandler (ctx: HttpContext) =
     | CreateTable name ->
         match CreateTable name |> commandHandler with
         | Ack -> ctx.Response.StatusCode <- 204
-        | Conflict reason -> ctx.Response.StatusCode <- 409
-        | _ -> ctx.Response.StatusCode <- 404
-    | InsertOrMergeEntity(table, partitionKey, rowKey, fields) ->
+        | Conflict _ -> ctx.Response.StatusCode <- 409
+        | _ -> ctx.Response.StatusCode <- 500
+    | InsertOrMergeEntity (table, partitionKey, rowKey, fields) ->
         InsertOrMerge
           (table,
-           { PartitonKey = partitionKey
-             RowKey = rowKey
-             Fields = fields |> TableFields.fromJObject })
+           ({ PartitonKey = partitionKey
+              RowKey = rowKey },
+            fields |> TableFields.fromJObject))
         |> commandHandler
         |> ignore
         ctx.Response.StatusCode <- 204
-    | InsertOrReplaceEntity(table, partitionKey, rowKey, fields) ->
+    | InsertOrReplaceEntity (table, partitionKey, rowKey, fields) ->
         InsertOrMerge
           (table,
-           { PartitonKey = partitionKey
-             RowKey = rowKey
-             Fields = fields |> TableFields.fromJObject })
+           ({ PartitonKey = partitionKey
+              RowKey = rowKey },
+            fields |> TableFields.fromJObject))
         |> commandHandler
         |> ignore
         ctx.Response.StatusCode <- 204
-    | InsertEntity(table, partitionKey, rowKey, fields) ->
-        Insert
+    | InsertEntity (table, partitionKey, rowKey, fields) ->
+        match Insert
+                (table,
+                 ({ PartitonKey = partitionKey
+                    RowKey = rowKey },
+                  fields |> TableFields.fromJObject))
+              |> commandHandler with
+        | Ack -> ctx.Response.StatusCode <- 204
+        | Conflict _ -> ctx.Response.StatusCode <- 409
+        | _ -> ctx.Response.StatusCode <- 500
+    | DeleteEntity (table, partitionKey, rowKey) ->
+        Delete
           (table,
            { PartitonKey = partitionKey
-             RowKey = rowKey
-             Fields = fields |> TableFields.fromJObject })
+             RowKey = rowKey })
         |> commandHandler
         |> ignore
         ctx.Response.StatusCode <- 204
-    | DeleteEntity request ->
-        Delete request
-        |> commandHandler
-        |> ignore
-        ctx.Response.StatusCode <- 204
-    | GetEntity request ->
-        match Get request |> commandHandler with
+    | GetEntity (table, partitionKey, rowKey) ->
+        match Get
+                (table,
+                 { PartitonKey = partitionKey
+                   RowKey = rowKey })
+              |> commandHandler with
         | GetResponse entity ->
             ctx.Response.StatusCode <- 200
             ctx.Response.ContentType <- "application/json; charset=utf-8"
@@ -170,10 +179,9 @@ let handler commandHandler (ctx: HttpContext) =
         | QueryResponse results ->
             ctx.Response.StatusCode <- 200
             ctx.Response.ContentType <- "application/json; charset=utf-8"
+
             let rows =
-              results
-              |> List.map (TableRow.toJObject)
-              |> JArray
+              results |> List.map (TableRow.toJObject) |> JArray
 
             let response = JObject([ JProperty("value", rows) ])
             let json = (response.ToString())
@@ -190,19 +198,26 @@ let private app tables (appBuilder: IApplicationBuilder) =
   appBuilder.Run(fun ctx -> handler (commandHandler tables) ctx)
 
 type FakeTables() =
-  let tables = Dictionary<string, ResizeArray<_>>()
-  let port = findPort()
+  let tables = Dictionary<string, _>()
+  let port = findPort ()
   // let port = 10002
   let url = sprintf "http://127.0.0.1:%i" port
+
   let connectionString =
     sprintf
       "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://localhost.charlesproxy.com:%i/devstoreaccount1;"
       port
+
   let webHost =
     WebHostBuilder().Configure(fun appBuilder -> app tables appBuilder).UseUrls(url)
       .UseKestrel(fun options -> options.AllowSynchronousIO <- true).Build()
+
   do webHost.Start()
-  member __.Client = CloudStorageAccount.Parse(connectionString).CreateCloudTableClient()
+
+  member __.Client =
+    CloudStorageAccount.Parse(connectionString).CreateCloudTableClient()
+
   member __.Tables = tables
+
   interface IDisposable with
     member __.Dispose() = webHost.Dispose()

@@ -1,8 +1,9 @@
 module FilterApplier
 
 open Domain
+open System.Collections.Generic
 
-let rec applyFilter (rows: TableRow seq) filter =
+let rec applyFilter (rows: IDictionary<TableKeys, TableFields>) filter =
 
   let compareFields left qc right =
 
@@ -60,23 +61,28 @@ let rec applyFilter (rows: TableRow seq) filter =
     | QueryComparison.LessThan -> fieldsLessThan (left, right)
     | QueryComparison.LessThanOrEqual -> fieldsLessThanOrEqual (left, right)
 
+  let toSeq (dictionary : KeyValuePair<_, _> seq) =
+    dictionary |> Seq.map (fun kvp -> kvp.Key, kvp.Value)
+
   match filter with
   | Filter.PartitionKey(qc, pk) ->
-      rows |> Seq.filter (fun r -> compareFields (FieldValue.String r.PartitonKey) qc (FieldValue.String pk))
+      rows |> toSeq |> Seq.filter (fun (keys, _) -> compareFields (FieldValue.String keys.PartitonKey) qc (FieldValue.String pk))
   | Filter.RowKey(qc, rk) ->
-      rows |> Seq.filter (fun r -> compareFields (FieldValue.String r.RowKey) qc (FieldValue.String rk))
+      rows |> toSeq |> Seq.filter (fun (keys, _) -> compareFields (FieldValue.String keys.RowKey) qc (FieldValue.String rk))
   | Filter.Property(name, qc, value) ->
       rows
-      |> Seq.filter (fun r ->
-           r.Fields
-           |> List.tryFind (fun f -> f.Name = name)
+      |> toSeq
+      |> Seq.filter (fun (_, values) ->
+           values
+           |> toSeq
+           |> Seq.tryFind (fun (n, _) -> n = name)
            |> function
-           | Some field -> (compareFields field.Value qc value)
+           | Some (_, v) -> (compareFields v qc value)
            | _ -> false)
   | Filter.Combined(left, tableOperator, right) ->
       match tableOperator with
       | TableOperators.And ->
-          let results = applyFilter rows left
+          let results = applyFilter rows left |> dict
           applyFilter results right
       | TableOperators.Or ->
           let leftResults = applyFilter rows left |> Set.ofSeq

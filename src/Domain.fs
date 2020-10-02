@@ -45,30 +45,28 @@ type Filter =
   | Property of name: string * QueryComparison * FieldValue
   | Combined of Filter * TableOperators * Filter
 
-type TableField =
-  { Name: string
-    Value: FieldValue }
+type TableFields = Map<string, FieldValue>
 
-type TableFields = TableField list
-
-type TableRow =
+type TableKeys =
   { PartitonKey: string
-    RowKey: string
-    Fields: TableFields }   // SHould be a dictionary to stop duplicate fields.
+    RowKey: string }
 
-type Tables = Dictionary<string, ResizeArray<TableRow>>
+type TableRow = TableKeys * TableFields
+
+type Tables = IDictionary<string, Map<TableKeys, TableFields>>    // Need this to be a dictionary so I can add things to it
 
 type Command =
   | CreateTable of Name: string
   | Insert of Table: string * TableRow
   | InsertOrMerge of Table: string * TableRow
-  | Delete of Table: string * PartitionKey: string * RowKey: string
-  | Get of Table: string * PartitionKey: string * RowKey: string
+  | Delete of Table: string * TableKeys
+  | Get of Table: string * TableKeys
   | Query of Table: string * Filter: string
 
 
 type ConflictReason =
   | TableAlreadyExists
+  | KeyAlreadyExists
 
 type CommandResult =
   | Ack
@@ -81,28 +79,30 @@ type CommandResult =
 module TableFields =
   open Newtonsoft.Json.Linq
 
-  let toJProperties tableFields =
+  let toJProperties (tableFields : TableFields) =
     let fields =
       tableFields
-      |> List.map (fun f ->
-
-           match f.Value with
-           | FieldValue.String value -> [ JProperty(f.Name, value) ]
+      |> Seq.toList
+      |> List.map (fun entry ->
+           let name = entry.Key
+           let value = entry.Value
+           match value with
+           | FieldValue.String value -> [ JProperty(name, value) ]
            | FieldValue.Long value ->
-               [ JProperty(f.Name, string value)
-                 JProperty(sprintf "%s@odata.type" f.Name, "Edm.Int64") ]
-           | FieldValue.Int value -> [ JProperty(f.Name, value) ]
+               [ JProperty(name, string value)
+                 JProperty(sprintf "%s@odata.type" name, "Edm.Int64") ]
+           | FieldValue.Int value -> [ JProperty(name, value) ]
            | FieldValue.Guid value ->
-               [ JProperty(f.Name, value)
-                 JProperty(sprintf "%s@odata.type" f.Name, "Edm.Guid") ]
-           | FieldValue.Double value -> [ JProperty(f.Name, value) ]
+               [ JProperty(name, value)
+                 JProperty(sprintf "%s@odata.type" name, "Edm.Guid") ]
+           | FieldValue.Double value -> [ JProperty(name, value) ]
            | FieldValue.Date value ->
-               [ JProperty(f.Name, value)
-                 JProperty(sprintf "%s@odata.type" f.Name, "Edm.DateTime") ]
-           | FieldValue.Bool value -> [ JProperty(f.Name, value) ]
+               [ JProperty(name, value)
+                 JProperty(sprintf "%s@odata.type" name, "Edm.DateTime") ]
+           | FieldValue.Bool value -> [ JProperty(name, value) ]
            | FieldValue.Binary value ->
-               [ JProperty(f.Name, value)
-                 JProperty(sprintf "%s@odata.type" f.Name, "Edm.Binary") ]
+               [ JProperty(name, value)
+                 JProperty(sprintf "%s@odata.type" name, "Edm.Binary") ]
 
            )
       |> List.collect id
@@ -126,9 +126,8 @@ module TableFields =
     |> Seq.filter (fun p -> p.Name <> "RowKey")
     |> Seq.filter (fun p -> p.Name.Contains "odata.type" |> not)
     |> Seq.map (fun p ->
-         { Name = p.Name
-           Value =
-             match p.Name |> oDataType with
+           (p.Name,
+            match p.Name |> oDataType with
              | "Edm.DateTime" ->
                  p.Value.Value<DateTime>()
                  |> DateTimeOffset
@@ -147,17 +146,18 @@ module TableFields =
                  | JTokenType.Integer -> p.Value.Value<int>() |> FieldValue.Int
                  | JTokenType.Float -> p.Value.Value<float>() |> FieldValue.Double
                  | JTokenType.Boolean -> p.Value.Value<bool>() |> FieldValue.Bool
-                 | _ -> p.Value.Value<string>() |> FieldValue.String })
-    |> Seq.toList
+                 | _ -> p.Value.Value<string>() |> FieldValue.String
+                 ))
+    |> Map.ofSeq
 
 module TableRow =
   open Newtonsoft.Json.Linq
 
-  let toJObject tableRow =
+  let toJObject (tablekeys : TableKeys, tableFields : TableFields) =
     let requiredFields =
-      [ JProperty("PartitionKey", tableRow.PartitonKey)
-        JProperty("RowKey", tableRow.RowKey) ]
+      [ JProperty("PartitionKey", tablekeys.PartitonKey)
+        JProperty("RowKey", tablekeys.RowKey) ]
 
-    let fields = TableFields.toJProperties tableRow.Fields
+    let fields = TableFields.toJProperties tableFields
 
     JObject(requiredFields |> List.append fields)

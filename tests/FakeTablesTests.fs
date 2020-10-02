@@ -3,6 +3,7 @@ module FakeTablesTests
 open Expecto
 open System
 open FakeTableStorage
+open Microsoft.Azure.Cosmos.Table
 
 [<Tests>]
 let addTableTests =
@@ -25,4 +26,35 @@ let addTableTests =
 
         Expect.equal actual false "unexpected result"
 
+      } ]
+
+[<Tests>]
+let insertTests =
+  testList
+    "Insert"
+    [ test "row doesn't exist is accepted" {
+        let table = createFakeTables()
+
+        let actual =
+          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes())
+          |> TableOperation.Insert
+          |> table.Execute
+
+        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+      }
+
+      test "row exists causes conflict" {
+        let table = createFakeTables()
+
+        DynamicTableEntity("pk2", "r2k", "*", allFieldTypes())
+        |> TableOperation.Insert
+        |> table.Execute
+        |> ignore
+
+        let actual =
+          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes())
+          |> TableOperation.Insert
+          |> table.Execute
+
+        Expect.equal (actual.HttpStatusCode) 409 "unexpected result"
       } ]
