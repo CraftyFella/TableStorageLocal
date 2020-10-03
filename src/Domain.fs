@@ -45,7 +45,7 @@ type Filter =
   | Property of name: string * QueryComparison * FieldValue
   | Combined of Filter * TableOperators * Filter
 
-type TableFields = Map<string, FieldValue>
+type TableFields = IDictionary<string, FieldValue>
 
 type TableKeys =
   { PartitonKey: string
@@ -53,7 +53,7 @@ type TableKeys =
 
 type TableRow = TableKeys * TableFields
 
-type Tables = IDictionary<string, Map<TableKeys, TableFields>>    // Need this to be a dictionary so I can add things to it
+type Tables = IDictionary<string, IDictionary<TableKeys, TableFields>>    // Need this to be a dictionary so I can add things to it
 
 type Command =
   | CreateTable of Name: string
@@ -148,7 +148,7 @@ module TableFields =
                  | JTokenType.Boolean -> p.Value.Value<bool>() |> FieldValue.Bool
                  | _ -> p.Value.Value<string>() |> FieldValue.String
                  ))
-    |> Map.ofSeq
+    |> dict
 
 module TableRow =
   open Newtonsoft.Json.Linq

@@ -61,15 +61,20 @@ let rec applyFilter (rows: IDictionary<TableKeys, TableFields>) filter =
     | QueryComparison.LessThan -> fieldsLessThan (left, right)
     | QueryComparison.LessThanOrEqual -> fieldsLessThanOrEqual (left, right)
 
-  let toSeq (dictionary : KeyValuePair<_, _> seq) =
-    dictionary |> Seq.map (fun kvp -> kvp.Key, kvp.Value)
+  let toSeq (dictionary: KeyValuePair<_, _> seq) =
+    dictionary
+    |> Seq.map (fun kvp -> kvp.Key, kvp.Value)
 
   match filter with
-  | Filter.PartitionKey(qc, pk) ->
-      rows |> toSeq |> Seq.filter (fun (keys, _) -> compareFields (FieldValue.String keys.PartitonKey) qc (FieldValue.String pk))
-  | Filter.RowKey(qc, rk) ->
-      rows |> toSeq |> Seq.filter (fun (keys, _) -> compareFields (FieldValue.String keys.RowKey) qc (FieldValue.String rk))
-  | Filter.Property(name, qc, value) ->
+  | Filter.PartitionKey (qc, pk) ->
+      rows
+      |> toSeq
+      |> Seq.filter (fun (keys, _) -> compareFields (FieldValue.String keys.PartitonKey) qc (FieldValue.String pk))
+  | Filter.RowKey (qc, rk) ->
+      rows
+      |> toSeq
+      |> Seq.filter (fun (keys, _) -> compareFields (FieldValue.String keys.RowKey) qc (FieldValue.String rk))
+  | Filter.Property (name, qc, value) ->
       rows
       |> toSeq
       |> Seq.filter (fun (_, values) ->
@@ -79,14 +84,15 @@ let rec applyFilter (rows: IDictionary<TableKeys, TableFields>) filter =
            |> function
            | Some (_, v) -> (compareFields v qc value)
            | _ -> false)
-  | Filter.Combined(left, tableOperator, right) ->
+  | Filter.Combined (left, tableOperator, right) ->
       match tableOperator with
       | TableOperators.And ->
           let results = applyFilter rows left |> dict
           applyFilter results right
       | TableOperators.Or ->
-          let leftResults = applyFilter rows left |> Set.ofSeq
-          let rightResults = applyFilter rows right |> Set.ofSeq
-          leftResults
-          |> Set.union rightResults
-          |> Set.toSeq
+          let leftResults = applyFilter rows left
+          let rightResults = applyFilter rows right
+          let results = leftResults |> dict
+          rightResults
+          |> Seq.iter (fun (keys, values) -> results.TryAdd(keys, values) |> ignore)
+          results |> toSeq

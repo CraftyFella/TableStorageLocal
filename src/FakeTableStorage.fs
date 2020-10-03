@@ -20,7 +20,7 @@ open Domain
 let commandHandler (tables: Tables) command =
   match command with
   | CreateTable name ->
-      match tables.TryAdd(name, Map.empty) with
+      match tables.TryAdd(name, Dictionary()) with
       | true -> Ack
       | false -> Conflict TableAlreadyExists
   | InsertOrMerge (table, (keys, fields)) ->
@@ -117,6 +117,14 @@ let private (|CreateTable|InsertEntity|InsertOrMergeEntity|InsertOrReplaceEntity
       | _ -> NotFound
   | _ -> NotFound
 
+let exceptonLoggingHandler (inner : HttpContext -> Task) (ctx: HttpContext) =
+  task {
+    try
+      do! inner ctx
+    with ex ->
+      printfn "Ouch %A" ex
+  } :> Task
+
 
 let handler commandHandler (ctx: HttpContext) =
   task {
@@ -195,7 +203,8 @@ let handler commandHandler (ctx: HttpContext) =
   } :> Task
 
 let private app tables (appBuilder: IApplicationBuilder) =
-  appBuilder.Run(fun ctx -> handler (commandHandler tables) ctx)
+  let inner = handler (commandHandler tables)
+  appBuilder.Run(fun ctx -> exceptonLoggingHandler inner ctx)
 
 type FakeTables() =
   let tables = Dictionary<string, _>()

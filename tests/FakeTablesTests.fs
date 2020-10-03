@@ -43,7 +43,7 @@ let insertTests =
         Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
       }
 
-      test "row exists causes conflict" {
+      test "row exists causes conflict exception" {
         let table = createFakeTables()
 
         DynamicTableEntity("pk2", "r2k", "*", allFieldTypes())
@@ -51,10 +51,12 @@ let insertTests =
         |> table.Execute
         |> ignore
 
-        let actual =
+
+        let run () =
           DynamicTableEntity("pk2", "r2k", "*", allFieldTypes())
           |> TableOperation.Insert
           |> table.Execute
+          |> ignore
 
-        Expect.equal (actual.HttpStatusCode) 409 "unexpected result"
+        Expect.throwsT<Microsoft.Azure.Cosmos.Table.StorageException> run "expected exception"
       } ]
