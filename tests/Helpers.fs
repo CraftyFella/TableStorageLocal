@@ -21,3 +21,5 @@ let allFieldTypes () =
     ("BoolField", EntityProperty.GeneratePropertyForBool(Nullable true))
     ("ByteArrayField", EntityProperty.GeneratePropertyForByteArray([| 104uy; 101uy; 108uy; 108uy; 111uy |])) ]
   |> dict
+
+let createEntity pk rk = DynamicTableEntity(pk, rk, "*", allFieldTypes ())

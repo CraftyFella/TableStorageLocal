@@ -198,9 +198,48 @@ let deleteTests =
           DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
 
         let actual =
-          TableOperation.Delete(entity)
-          |> table.Execute
+          TableOperation.Delete(entity) |> table.Execute
 
         Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+
+      } ]
+
+[<Tests>]
+let searchTests =
+  testList
+    "search"
+    [ test "all with matching partition key" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "rk1"
+          createEntity "pk1" "rk2"
+          createEntity "pk2" "rk3"
+          createEntity "pk1" "rk4"
+          createEntity "pk1" "rk5" ]
+        |> List.iter insert
+
+        let filter =
+          TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
+
+        let query =
+          TableQuery<DynamicTableEntity>().Where filter
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        let rowKeys = results |> Seq.map (fun r -> r.RowKey) |> Seq.toList
+        Expect.equal rowKeys ["rk1"; "rk2"; "rk4"; "rk5"] "unexpected row Keys"
+
+        for result in results do
+          for field in allFieldTypes () do
+            Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
 
       } ]
