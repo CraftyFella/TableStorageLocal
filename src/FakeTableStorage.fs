@@ -25,8 +25,13 @@ let commandHandler (tables: Tables) command =
       | false -> Conflict TableAlreadyExists
   | InsertOrMerge (table, (keys, fields)) ->
       let table = tables.[table]
-      table.Add(keys, fields) |> ignore
-      Ack
+      match table.ContainsKey keys with
+      | true ->
+          table.[keys] <- fields
+          Ack
+      | false ->
+          table.Add(keys, fields) |> ignore
+          Ack
   | Insert (table, (keys, fields)) ->
       let table = tables.[table]
       match table.ContainsKey keys with
@@ -117,12 +122,11 @@ let private (|CreateTable|InsertEntity|InsertOrMergeEntity|InsertOrReplaceEntity
       | _ -> NotFound
   | _ -> NotFound
 
-let exceptonLoggingHandler (inner : HttpContext -> Task) (ctx: HttpContext) =
+let exceptonLoggingHandler (inner: HttpContext -> Task) (ctx: HttpContext) =
   task {
     try
       do! inner ctx
-    with ex ->
-      printfn "Ouch %A" ex
+    with ex -> printfn "Ouch %A" ex
   } :> Task
 
 
@@ -144,13 +148,14 @@ let handler commandHandler (ctx: HttpContext) =
         |> ignore
         ctx.Response.StatusCode <- 204
     | InsertOrReplaceEntity (table, partitionKey, rowKey, fields) ->
-        InsertOrMerge
-          (table,
-           ({ PartitonKey = partitionKey
-              RowKey = rowKey },
-            fields |> TableFields.fromJObject))
-        |> commandHandler
-        |> ignore
+        match InsertOrMerge
+                (table,
+                 ({ PartitonKey = partitionKey
+                    RowKey = rowKey },
+                  fields |> TableFields.fromJObject))
+              |> commandHandler with
+        | Ack -> ctx.Response.StatusCode <- 204
+        | _ -> ctx.Response.StatusCode <- 500
         ctx.Response.StatusCode <- 204
     | InsertEntity (table, partitionKey, rowKey, fields) ->
         match Insert

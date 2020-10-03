@@ -33,10 +33,10 @@ let insertTests =
   testList
     "Insert"
     [ test "row doesn't exist is accepted" {
-        let table = createFakeTables()
+        let table = createFakeTables ()
 
         let actual =
-          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes())
+          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
           |> TableOperation.Insert
           |> table.Execute
 
@@ -44,19 +44,51 @@ let insertTests =
       }
 
       test "row exists causes conflict exception" {
-        let table = createFakeTables()
+        let table = createFakeTables ()
 
-        DynamicTableEntity("pk2", "r2k", "*", allFieldTypes())
+        DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
         |> TableOperation.Insert
         |> table.Execute
         |> ignore
 
 
         let run () =
-          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes())
+          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
           |> TableOperation.Insert
           |> table.Execute
           |> ignore
 
         Expect.throwsT<Microsoft.Azure.Cosmos.Table.StorageException> run "expected exception"
+      } ]
+
+[<Tests>]
+let insertOrMergeTests =
+  testList
+    "insertOrMerge"
+    [ test "row doesn't exist is accepted" {
+        let table = createFakeTables ()
+
+        let actual =
+          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
+          |> TableOperation.InsertOrMerge
+          |> table.Execute
+
+        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+      }
+      test "row exists is accepted" {
+        let table = createFakeTables ()
+
+        DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
+        |> TableOperation.Insert
+        |> table.Execute
+        |> ignore
+
+
+        let actual =
+          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
+          |> TableOperation.InsertOrMerge
+          |> table.Execute
+
+        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+
       } ]

@@ -12,12 +12,12 @@ let createFakeTables () =
   table
 
 let allFieldTypes () =
-  [ ("StringField", EntityProperty.GeneratePropertyForString("StringValue2"))
-    ("DateField", EntityProperty.GeneratePropertyForDateTimeOffset(Nullable DateTimeOffset.UtcNow))
+  [ ("StringField", EntityProperty.GeneratePropertyForString("StringValue"))
+    ("DateField", EntityProperty.GeneratePropertyForDateTimeOffset(Nullable DateTimeOffset.MinValue))
     ("IntField", EntityProperty.GeneratePropertyForInt(Nullable 2))
-    ("LongField", EntityProperty.GeneratePropertyForLong(Nullable 2L))
-    ("GuidField", EntityProperty.GeneratePropertyForGuid(Nullable(Guid.NewGuid())))
-    ("FloatField", EntityProperty.GeneratePropertyForDouble(Nullable 2.))
-    ("BoolField", EntityProperty.GeneratePropertyForBool(Nullable false))
+    ("LongField", EntityProperty.GeneratePropertyForLong(Nullable 3L))
+    ("GuidField", EntityProperty.GeneratePropertyForGuid(Nullable(Guid.Empty)))
+    ("FloatField", EntityProperty.GeneratePropertyForDouble(Nullable 4.))
+    ("BoolField", EntityProperty.GeneratePropertyForBool(Nullable true))
     ("ByteArrayField", EntityProperty.GeneratePropertyForByteArray([| 104uy; 101uy; 108uy; 108uy; 111uy |])) ]
   |> dict
