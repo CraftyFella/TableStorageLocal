@@ -188,7 +188,8 @@ let handler commandHandler (ctx: HttpContext) =
             let jObject = entity |> TableRow.toJObject
             let json = jObject.ToString()
             do! json |> ctx.Response.WriteAsync
-        | _ -> ctx.Response.StatusCode <- 404
+        | CommandResult.NotFound -> ctx.Response.StatusCode <- 404
+        | _ -> ctx.Response.StatusCode <- 500
     | QueryEntity request ->
         match Query request |> commandHandler with
         | QueryResponse results ->
