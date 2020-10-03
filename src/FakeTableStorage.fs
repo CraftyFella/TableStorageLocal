@@ -46,7 +46,6 @@ let commandHandler (tables: Tables) command =
       | _ -> NotFound
   | Query (table, filter) ->
       let table = tables.[table]
-      printfn "Filter: %A" filter
 
       let matchingRows =
         match fParse filter with
