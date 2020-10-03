@@ -334,6 +334,52 @@ let searchTests =
 
       }
 
+      test "partionKey AND rowKey" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "rk1"
+          createEntity "pk2" "rk3"
+          createEntity "pk3" "rk3"
+          createEntity "pk3" "rk4"
+          createEntity "pk5" "rk5" ]
+        |> List.iter insert
+
+        let partitionKeyFilter =
+          TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk3")
+
+        let rowKeyFilter =
+          TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, "rk3")
+
+        let filter =
+          TableQuery.CombineFilters(partitionKeyFilter, TableOperators.And, rowKeyFilter)
+
+        let query =
+          TableQuery<DynamicTableEntity>().Where filter
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        let partitionKeysAndRowKeys =
+          results
+          |> Seq.map (fun r -> r.PartitionKey, r.RowKey)
+          |> Seq.toList
+
+        Expect.equal partitionKeysAndRowKeys [ "pk3", "rk3"; ] "unexpected rows"
+
+        for result in results do
+          for field in allFieldTypes () do
+            Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
+
+      }
+
       test "no matchses" {
         let table = createFakeTables ()
 
