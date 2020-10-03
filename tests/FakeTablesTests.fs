@@ -380,6 +380,84 @@ let searchTests =
 
       }
 
+      test "property String search" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntityWithString "pk1" "rk1" "One"
+          createEntityWithString "pk2" "rk3" "Two"
+          createEntityWithString "pk3" "rk3" "One"
+          createEntityWithString "pk3" "rk4" "Two"
+          createEntityWithString "pk5" "rk5" "Three"]
+        |> List.iter insert
+
+        let filter =
+          TableQuery.GenerateFilterCondition("StringField", QueryComparisons.Equal, "Two")
+
+        let query =
+          TableQuery<DynamicTableEntity>().Where filter
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        let partitionKeysAndRowKeys =
+          results
+          |> Seq.map (fun r -> r.PartitionKey, r.RowKey)
+          |> Seq.toList
+
+        Expect.equal partitionKeysAndRowKeys [ "pk2", "rk3"; "pk3", "rk4" ] "unexpected rows"
+
+        for result in results do
+          Expect.equal (result.Properties.["StringField"].StringValue) "Two" "unexpected values"
+
+      }
+
+      test "property Int search" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntityWithInt "pk1" "rk1" 1
+          createEntityWithInt "pk2" "rk3" 2
+          createEntityWithInt "pk3" "rk3" 1
+          createEntityWithInt "pk3" "rk4" 2
+          createEntityWithInt "pk5" "rk5" 3]
+        |> List.iter insert
+
+        let filter =
+          TableQuery.GenerateFilterConditionForInt("IntField", QueryComparisons.Equal, 2)
+
+        let query =
+          TableQuery<DynamicTableEntity>().Where filter
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        let partitionKeysAndRowKeys =
+          results
+          |> Seq.map (fun r -> r.PartitionKey, r.RowKey)
+          |> Seq.toList
+
+        Expect.equal partitionKeysAndRowKeys [ "pk2", "rk3"; "pk3", "rk4" ] "unexpected rows"
+
+        for result in results do
+          Expect.equal (result.Properties.["IntField"].Int32Value.Value) 2 "unexpected values"
+
+      }
+
       test "no matchses" {
         let table = createFakeTables ()
 
