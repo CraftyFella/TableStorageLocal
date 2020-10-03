@@ -139,13 +139,14 @@ let handler commandHandler (ctx: HttpContext) =
         | Conflict _ -> ctx.Response.StatusCode <- 409
         | _ -> ctx.Response.StatusCode <- 500
     | InsertOrMergeEntity (table, partitionKey, rowKey, fields) ->
-        InsertOrMerge
-          (table,
-           ({ PartitonKey = partitionKey
-              RowKey = rowKey },
-            fields |> TableFields.fromJObject))
-        |> commandHandler
-        |> ignore
+        match InsertOrMerge
+                (table,
+                 ({ PartitonKey = partitionKey
+                    RowKey = rowKey },
+                  fields |> TableFields.fromJObject))
+              |> commandHandler with
+        | Ack -> ctx.Response.StatusCode <- 204
+        | _ -> ctx.Response.StatusCode <- 500
         ctx.Response.StatusCode <- 204
     | InsertOrReplaceEntity (table, partitionKey, rowKey, fields) ->
         match InsertOrMerge
@@ -184,7 +185,8 @@ let handler commandHandler (ctx: HttpContext) =
         | GetResponse entity ->
             ctx.Response.StatusCode <- 200
             ctx.Response.ContentType <- "application/json; charset=utf-8"
-            let json = entity.ToString()
+            let jObject = entity |> TableRow.toJObject
+            let json = jObject.ToString()
             do! json |> ctx.Response.WriteAsync
         | _ -> ctx.Response.StatusCode <- 404
     | QueryEntity request ->
