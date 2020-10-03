@@ -235,11 +235,119 @@ let searchTests =
         let results =
           table.ExecuteQuerySegmented(query, token)
 
-        let rowKeys = results |> Seq.map (fun r -> r.RowKey) |> Seq.toList
-        Expect.equal rowKeys ["rk1"; "rk2"; "rk4"; "rk5"] "unexpected row Keys"
+        let rowKeys =
+          results
+          |> Seq.map (fun r -> r.RowKey)
+          |> Seq.toList
+
+        Expect.equal rowKeys [ "rk1"; "rk2"; "rk4"; "rk5" ] "unexpected row Keys"
 
         for result in results do
           for field in allFieldTypes () do
             Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
+
+      }
+
+      test "all with matching row key" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "rk1"
+          createEntity "pk2" "rk2"
+          createEntity "pk3" "rk1"
+          createEntity "pk4" "rk4"
+          createEntity "pk5" "rk5" ]
+        |> List.iter insert
+
+        let filter =
+          TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, "rk1")
+
+        let query =
+          TableQuery<DynamicTableEntity>().Where filter
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        let partitionKeys =
+          results
+          |> Seq.map (fun r -> r.PartitionKey)
+          |> Seq.toList
+
+        Expect.equal partitionKeys [ "pk1"; "pk3" ] "unexpected partition Keys"
+
+        for result in results do
+          for field in allFieldTypes () do
+            Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
+
+      }
+
+      test "partionKey OR rowKey" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "rk1"
+          createEntity "pk2" "rk2"
+          createEntity "pk3" "rk3"
+          createEntity "pk4" "rk4"
+          createEntity "pk5" "rk5" ]
+        |> List.iter insert
+
+        let partitionKeyFilter =
+          TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk3")
+
+        let rowKeyFilter =
+          TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, "rk5")
+
+        let filter =
+          TableQuery.CombineFilters(partitionKeyFilter, TableOperators.Or, rowKeyFilter)
+
+        let query =
+          TableQuery<DynamicTableEntity>().Where filter
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        let partitionKeysAndRowKeys =
+          results
+          |> Seq.map (fun r -> r.PartitionKey, r.RowKey)
+          |> Seq.toList
+
+        Expect.equal partitionKeysAndRowKeys [ "pk3", "rk3"; "pk5", "rk5" ] "unexpected rows"
+
+        for result in results do
+          for field in allFieldTypes () do
+            Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
+
+      }
+
+      test "no matchses" {
+        let table = createFakeTables ()
+
+        let filter =
+          TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
+
+        let query =
+          TableQuery<DynamicTableEntity>().Where filter
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        Expect.equal (results |> Seq.length) 0 "unexpected length"
 
       } ]

@@ -92,7 +92,10 @@ let rec applyFilter (rows: IDictionary<TableKeys, TableFields>) filter =
       | TableOperators.Or ->
           let leftResults = applyFilter rows left
           let rightResults = applyFilter rows right
-          let results = leftResults |> dict
+          let results = Dictionary()
+          leftResults
+          |> Seq.iter (fun (keys, values) -> results.TryAdd(keys, values) |> ignore)
           rightResults
           |> Seq.iter (fun (keys, values) -> results.TryAdd(keys, values) |> ignore)
           results |> toSeq
+  
