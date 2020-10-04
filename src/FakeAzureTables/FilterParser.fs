@@ -4,149 +4,151 @@ open System
 open Domain
 open FParsec
 
-let fvBool =
-    let btrue =
-        stringReturn "true" (FieldValue.Bool true)
+module private Parser =
 
-    let bfalse =
-        stringReturn "false" (FieldValue.Bool false)
+    let fvBool =
+        let btrue =
+            stringReturn "true" (FieldValue.Bool true)
 
-    btrue <|> bfalse
+        let bfalse =
+            stringReturn "false" (FieldValue.Bool false)
 
-let fvLong =
-    pint64 .>> pchar 'L' |>> (FieldValue.Long)
+        btrue <|> bfalse
 
-let fvDouble =
-    let number = many1Chars digit
-    number
-    .>>. pchar '.'
-    .>>. number
-    |>> (fun ((a, _), b) ->
-        let floatString = (sprintf "%s.%s" a b)
-        FieldValue.Double(Double.Parse floatString))
+    let fvLong =
+        pint64 .>> pchar 'L' |>> (FieldValue.Long)
 
-let fvInt = pint32 |>> (FieldValue.Int)
+    let fvDouble =
+        let number = many1Chars digit
+        number
+        .>>. pchar '.'
+        .>>. number
+        |>> (fun ((a, _), b) ->
+            let floatString = (sprintf "%s.%s" a b)
+            FieldValue.Double(Double.Parse floatString))
 
-let fvDate =
-    let prefix = pstring "datetime"
-    let quote = pchar '\''
-    prefix
-    >>. (between quote quote (regex "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z")
-         |>> (DateTimeOffset.Parse >> FieldValue.Date))
+    let fvInt = pint32 |>> (FieldValue.Int)
 
-let fvBinary =
-    let prefix = pstring "binary"
-    let quote = pchar '\''
-    prefix
-    >>. (between quote quote (regex "(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?")
-         |>> (Convert.FromBase64String >> FieldValue.Binary))
+    let fvDate =
+        let prefix = pstring "datetime"
+        let quote = pchar '\''
+        prefix
+        >>. (between quote quote (regex "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z")
+             |>> (DateTimeOffset.Parse >> FieldValue.Date))
 
-let fvGuid =
-    let prefix = pstring "guid"
-    let quote = pchar '\''
-    prefix
-    >>. (between quote quote (regex "(?im)^[{(]?[0-9A-F]{8}[-]?(?:[0-9A-F]{4}[-]?){3}[0-9A-F]{12}[)}]?")
-         |>> (Guid.Parse >> FieldValue.Guid))
+    let fvBinary =
+        let prefix = pstring "binary"
+        let quote = pchar '\''
+        prefix
+        >>. (between quote quote (regex "(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?")
+             |>> (Convert.FromBase64String >> FieldValue.Binary))
 
-let letterOrNumber = asciiLetter <|> digit
-let manyLettersOrNumbers = many1Chars letterOrNumber
+    let fvGuid =
+        let prefix = pstring "guid"
+        let quote = pchar '\''
+        prefix
+        >>. (between quote quote (regex "(?im)^[{(]?[0-9A-F]{8}[-]?(?:[0-9A-F]{4}[-]?){3}[0-9A-F]{12}[)}]?")
+             |>> (Guid.Parse >> FieldValue.Guid))
 
-let fvString =
-    let quote = pchar '\''
-    between quote quote manyLettersOrNumbers
-    |>> FieldValue.String
+    let letterOrNumber = asciiLetter <|> digit
+    let manyLettersOrNumbers = many1Chars letterOrNumber
 
-let fvLongOrBackTrackToInt = (attempt fvLong) <|> fvInt
-let fvDoubleOrBackTrackTo parser = (attempt fvDouble) <|> parser
+    let fvString =
+        let quote = pchar '\''
+        between quote quote manyLettersOrNumbers
+        |>> FieldValue.String
 
-let fFieldValue =
-    fvGuid
-    <|> fvDate
-    <|> fvBinary
-    <|> fvBool
-    <|> fvDoubleOrBackTrackTo fvLongOrBackTrackToInt
-    <|> fvString
+    let fvLongOrBackTrackToInt = (attempt fvLong) <|> fvInt
+    let fvDoubleOrBackTrackTo parser = (attempt fvDouble) <|> parser
 
-let fQueryComparison =
-    [ ("eq", QueryComparison.Equal)
-      ("ne", QueryComparison.NotEqual)
-      ("gt", QueryComparison.GreaterThan)
-      ("ge", QueryComparison.GreaterThanOrEqual)
-      ("lt", QueryComparison.LessThan)
-      ("le", QueryComparison.LessThanOrEqual) ]
-    |> List.map (fun (toMatch, qc) -> stringReturn toMatch qc <?> (sprintf "%O" qc))
-    |> choice
+    let fFieldValue =
+        fvGuid
+        <|> fvDate
+        <|> fvBinary
+        <|> fvBool
+        <|> fvDoubleOrBackTrackTo fvLongOrBackTrackToInt
+        <|> fvString
 
-let fProperty =
-    let name =
-        manyLettersOrNumbers .>> spaces <?> "Name"
+    let fQueryComparison =
+        [ ("eq", QueryComparison.Equal)
+          ("ne", QueryComparison.NotEqual)
+          ("gt", QueryComparison.GreaterThan)
+          ("ge", QueryComparison.GreaterThanOrEqual)
+          ("lt", QueryComparison.LessThan)
+          ("le", QueryComparison.LessThanOrEqual) ]
+        |> List.map (fun (toMatch, qc) -> stringReturn toMatch qc <?> (sprintf "%O" qc))
+        |> choice
 
-    let queryComparison =
-        fQueryComparison .>> spaces <?> "QueryComparison"
+    let fProperty =
+        let name =
+            manyLettersOrNumbers .>> spaces <?> "Name"
 
-    let filterValue = fFieldValue <?> "FilterValue"
+        let queryComparison =
+            fQueryComparison .>> spaces <?> "QueryComparison"
 
-    name
-    .>>. queryComparison
-    .>>. filterValue
-    |>> (fun ((n, qc), fv) -> Filter.Property(n, qc, fv))
+        let filterValue = fFieldValue <?> "FilterValue"
 
-let fTableOperators =
-    [ ("or", TableOperators.Or)
-      ("and", TableOperators.And) ]
-    |> List.map (fun (toMatch, tableOp) ->
-        stringReturn toMatch tableOp
-        <?> (sprintf "%O" tableOp))
-    |> choice
+        name
+        .>>. queryComparison
+        .>>. filterValue
+        |>> (fun ((n, qc), fv) -> Filter.Property(n, qc, fv))
 
-let fFilter, fFilterRef = createParserForwardedToRef ()
+    let fTableOperators =
+        [ ("or", TableOperators.Or)
+          ("and", TableOperators.And) ]
+        |> List.map (fun (toMatch, tableOp) ->
+            stringReturn toMatch tableOp
+            <?> (sprintf "%O" tableOp))
+        |> choice
 
-let fcombined =
-    let open' = pchar '('
-    let close = pchar ')'
+    let fFilter, fFilterRef = createParserForwardedToRef ()
 
-    let left = (between open' close fFilter) .>> spaces
-    let right = spaces >>. (between open' close fFilter)
-    (left .>>. fTableOperators .>>. right)
-    |>> (fun ((a, tableOp), b) -> Filter.Combined(a, tableOp, b))
+    let fcombined =
+        let open' = pchar '('
+        let close = pchar ')'
 
-let fPartitionKey =
-    let name = pstringCI "partitionKey"
-    let nameAndSpaces = name .>> spaces <?> "Name"
+        let left = (between open' close fFilter) .>> spaces
+        let right = spaces >>. (between open' close fFilter)
+        (left .>>. fTableOperators .>>. right)
+        |>> (fun ((a, tableOp), b) -> Filter.Combined(a, tableOp, b))
 
-    let queryComparison =
-        fQueryComparison .>> spaces <?> "QueryComparison"
+    let fPartitionKey =
+        let name = pstringCI "partitionKey"
+        let nameAndSpaces = name .>> spaces <?> "Name"
 
-    let filterValue = fvString <?> "FilterValue"
+        let queryComparison =
+            fQueryComparison .>> spaces <?> "QueryComparison"
 
-    nameAndSpaces
-    >>. queryComparison
-    .>>. filterValue
-    |>> (fun (qc, (FieldValue.String (fv))) -> Filter.PartitionKey(qc, fv))
+        let filterValue = fvString <?> "FilterValue"
 
-let fRowKey =
-    let name = pstringCI "rowkey"
-    let nameAndSpaces = name .>> spaces <?> "Name"
+        nameAndSpaces
+        >>. queryComparison
+        .>>. filterValue
+        |>> (fun (qc, (FieldValue.String (fv))) -> Filter.PartitionKey(qc, fv))
 
-    let queryComparison =
-        fQueryComparison .>> spaces <?> "QueryComparison"
+    let fRowKey =
+        let name = pstringCI "rowkey"
+        let nameAndSpaces = name .>> spaces <?> "Name"
 
-    let filterValue = fvString <?> "FilterValue"
+        let queryComparison =
+            fQueryComparison .>> spaces <?> "QueryComparison"
 
-    nameAndSpaces
-    >>. queryComparison
-    .>>. filterValue
-    |>> (fun (qc, (FieldValue.String (fv))) -> Filter.RowKey(qc, fv))
+        let filterValue = fvString <?> "FilterValue"
 
-do fFilterRef
-   := choice [ fPartitionKey
-               fRowKey
-               fProperty
-               fcombined ]
+        nameAndSpaces
+        >>. queryComparison
+        .>>. filterValue
+        |>> (fun (qc, (FieldValue.String (fv))) -> Filter.RowKey(qc, fv))
 
-let filter = spaces >>. fFilter .>> spaces .>> eof
+    do fFilterRef
+       := choice [ fPartitionKey
+                   fRowKey
+                   fProperty
+                   fcombined ]
 
-let fParse query =
-    match run filter query with
+    let filter = spaces >>. fFilter .>> spaces .>> eof
+
+let parse query =
+    match run Parser.filter query with
     | Success (result, _, _) -> result |> Result.Ok
-    | Failure (_, error, _) -> error |> Result.Error
+    | Failure (_, error, _) -> error.ToString() |> Result.Error

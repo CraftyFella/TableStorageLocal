@@ -36,7 +36,7 @@ let commandHandler (tables: Tables) command =
       let table = tables.[table]
 
       let matchingRows =
-        match fParse filter with
+        match parse filter with
         | Result.Ok result -> applyFilter table result
         | Result.Error error ->
             printfn "Filter: %A;\nError: %A" filter error

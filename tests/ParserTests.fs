@@ -11,7 +11,7 @@ let parserTests =
     [ test "partition key" {
 
         let actual =
-          "PartitionKey eq 'pk'" |> FilterParser.fParse
+          "PartitionKey eq 'pk'" |> FilterParser.parse
 
         let expected =
           Ok(Filter.PartitionKey(QueryComparison.Equal, "pk"))
@@ -21,7 +21,7 @@ let parserTests =
 
       test "row key" {
 
-        let actual = "RowKey eq 'rk'" |> FilterParser.fParse
+        let actual = "RowKey eq 'rk'" |> FilterParser.parse
 
         let expected =
           Ok(Filter.RowKey(QueryComparison.Equal, "rk"))
@@ -31,8 +31,7 @@ let parserTests =
 
       test "property (String)" {
 
-        let actual =
-          "Field eq 'value'" |> FilterParser.fParse
+        let actual = "Field eq 'value'" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.String "value"))
@@ -42,7 +41,7 @@ let parserTests =
 
       test "property (Long)" {
 
-        let actual = "Field eq 1L" |> FilterParser.fParse
+        let actual = "Field eq 1L" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Long 1L))
@@ -54,7 +53,7 @@ let parserTests =
 
         let actual =
           "Field eq guid'd80d1dea-830a-43ab-bcc9-01386e037469'"
-          |> FilterParser.fParse
+          |> FilterParser.parse
 
         let expected =
           Ok
@@ -68,7 +67,7 @@ let parserTests =
 
         let actual =
           "Field ge datetime'2000-10-01T01:11:22.931Z'"
-          |> FilterParser.fParse
+          |> FilterParser.parse
 
         let expected =
           Ok
@@ -82,7 +81,7 @@ let parserTests =
 
       test "property (Bool)" {
 
-        let actual = "Field eq true" |> FilterParser.fParse
+        let actual = "Field eq true" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Bool true))
@@ -92,7 +91,7 @@ let parserTests =
 
       test "property (Int)" {
 
-        let actual = "Field eq 1" |> FilterParser.fParse
+        let actual = "Field eq 1" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Int 1))
@@ -103,7 +102,7 @@ let parserTests =
 
       test "property (Double)" {
 
-        let actual = "Field eq 1.0" |> FilterParser.fParse
+        let actual = "Field eq 1.0" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Double 1.))
@@ -114,7 +113,7 @@ let parserTests =
       test "property (Binary)" {
 
         let actual =
-          "Field eq binary'aGVsbG8='" |> FilterParser.fParse
+          "Field eq binary'aGVsbG8='" |> FilterParser.parse
 
         let expected =
           Ok
@@ -134,7 +133,7 @@ let parserTests =
 
         let left =
           "(PartitionKey eq 'pk') and (RowKey eq 'rk')"
-          |> FilterParser.fParse
+          |> FilterParser.parse
 
         let expected =
           Ok
@@ -150,7 +149,7 @@ let parserTests =
 
         let left =
           "(PartitionKey eq 'pk') or (RowKey eq 'rk')"
-          |> FilterParser.fParse
+          |> FilterParser.parse
 
         let expected =
           Ok
@@ -164,7 +163,7 @@ let parserTests =
 
       test "greater than" {
 
-        let actual = "Field gt 1L" |> FilterParser.fParse
+        let actual = "Field gt 1L" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.GreaterThan, FieldValue.Long 1L))
@@ -174,7 +173,7 @@ let parserTests =
 
       test "greater than or equal" {
 
-        let actual = "Field ge 1L" |> FilterParser.fParse
+        let actual = "Field ge 1L" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.GreaterThanOrEqual, FieldValue.Long 1L))
@@ -184,7 +183,7 @@ let parserTests =
 
       test "less than" {
 
-        let actual = "Field lt 1L" |> FilterParser.fParse
+        let actual = "Field lt 1L" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.LessThan, FieldValue.Long 1L))
@@ -194,7 +193,7 @@ let parserTests =
 
       test "less than or equal" {
 
-        let actual = "Field le 1L" |> FilterParser.fParse
+        let actual = "Field le 1L" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.LessThanOrEqual, FieldValue.Long 1L))
