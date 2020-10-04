@@ -158,12 +158,3 @@ module TableRow =
     let fields = TableFields.toJProperties tableFields
 
     JObject(requiredFields |> List.append fields)
-
-// type IDictionary<'TKey, 'TValue> with
-//   member __.TryAdd(key: 'TKey, value: 'TValue) =
-//     if __.ContainsKey(key) then
-//       __.[key] <- value
-//       false
-//     else
-//       __.Add(key, value)
-//       true

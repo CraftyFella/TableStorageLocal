@@ -2,10 +2,13 @@ open System
 open Microsoft.Azure.Cosmos.Table
 open FakeTableStorage
 
+
+
 [<EntryPoint>]
 let main argv =
-  let tables = new FakeTables()
-  let table = tables.Client.GetTableReference "test"
+  use tables = new FakeTables()
+  let client = CloudStorageAccount.Parse(tables.ConnectionString).CreateCloudTableClient()
+  let table = client.GetTableReference "test"
   table.CreateIfNotExists() |> ignore
   let fields =
     [ ("StringField", EntityProperty.GeneratePropertyForString("StringValue1"))

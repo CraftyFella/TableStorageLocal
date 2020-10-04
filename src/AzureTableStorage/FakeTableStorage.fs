@@ -1,7 +1,6 @@
 module FakeTableStorage
 
 open System
-open Microsoft.Azure.Cosmos.Table
 open System.Collections.Generic
 open Newtonsoft.Json.Linq
 open Microsoft.AspNetCore.Hosting
@@ -230,8 +229,8 @@ type FakeTables() =
 
   do webHost.Start()
 
-  member __.Client =
-    CloudStorageAccount.Parse(connectionString).CreateCloudTableClient()
+  member __.ConnectionString =
+    connectionString
 
   member __.Tables = tables
 

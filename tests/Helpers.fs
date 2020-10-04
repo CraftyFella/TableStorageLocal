@@ -5,6 +5,10 @@ open FakeTableStorage
 open Microsoft.Azure.Cosmos.Table
 open System
 
+type FakeTables with
+  member __.Client =
+    CloudStorageAccount.Parse(__.ConnectionString).CreateCloudTableClient()
+
 let createFakeTables () =
   let tables = new FakeTables()
   let table = tables.Client.GetTableReference "test"
