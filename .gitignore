@@ -10,6 +10,7 @@ packages
 .vscode
 .ionide
 .fake
+.config
 .idea
 .DS_Store
 node_modules
