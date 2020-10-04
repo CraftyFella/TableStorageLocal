@@ -98,4 +98,3 @@ let rec applyFilter (rows: IDictionary<TableKeys, TableFields>) filter =
           rightResults
           |> Seq.iter (fun (keys, values) -> results.TryAdd(keys, values) |> ignore)
           results |> toSeq
-  

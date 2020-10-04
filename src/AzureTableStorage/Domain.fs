@@ -47,13 +47,11 @@ type Filter =
 
 type TableFields = IDictionary<string, FieldValue>
 
-type TableKeys =
-  { PartitonKey: string
-    RowKey: string }
+type TableKeys = { PartitonKey: string; RowKey: string }
 
 type TableRow = TableKeys * TableFields
 
-type Tables = IDictionary<string, IDictionary<TableKeys, TableFields>>    // Need this to be a dictionary so I can add things to it
+type Tables = IDictionary<string, IDictionary<TableKeys, TableFields>> // Need this to be a dictionary so I can add things to it
 
 type Command =
   | CreateTable of Name: string
@@ -79,7 +77,7 @@ type CommandResult =
 module TableFields =
   open Newtonsoft.Json.Linq
 
-  let toJProperties (tableFields : TableFields) =
+  let toJProperties (tableFields: TableFields) =
     let fields =
       tableFields
       |> Seq.toList
@@ -126,34 +124,33 @@ module TableFields =
     |> Seq.filter (fun p -> p.Name <> "RowKey")
     |> Seq.filter (fun p -> p.Name.Contains "odata.type" |> not)
     |> Seq.map (fun p ->
-           (p.Name,
-            match p.Name |> oDataType with
-             | "Edm.DateTime" ->
-                 p.Value.Value<DateTime>()
-                 |> DateTimeOffset
-                 |> FieldValue.Date
-             | "Edm.Int64" -> p.Value.Value<int64>() |> FieldValue.Long
-             | "Edm.Guid" ->
-                 p.Value.Value<string>()
-                 |> Guid.Parse
-                 |> FieldValue.Guid
-             | "Edm.Binary" ->
-                 p.Value.Value<string>()
-                 |> Convert.FromBase64String
-                 |> FieldValue.Binary
-             | _ ->
-                 match p.Value.Type with
-                 | JTokenType.Integer -> p.Value.Value<int>() |> FieldValue.Int
-                 | JTokenType.Float -> p.Value.Value<float>() |> FieldValue.Double
-                 | JTokenType.Boolean -> p.Value.Value<bool>() |> FieldValue.Bool
-                 | _ -> p.Value.Value<string>() |> FieldValue.String
-                 ))
+         (p.Name,
+          match p.Name |> oDataType with
+          | "Edm.DateTime" ->
+              p.Value.Value<DateTime>()
+              |> DateTimeOffset
+              |> FieldValue.Date
+          | "Edm.Int64" -> p.Value.Value<int64>() |> FieldValue.Long
+          | "Edm.Guid" ->
+              p.Value.Value<string>()
+              |> Guid.Parse
+              |> FieldValue.Guid
+          | "Edm.Binary" ->
+              p.Value.Value<string>()
+              |> Convert.FromBase64String
+              |> FieldValue.Binary
+          | _ ->
+              match p.Value.Type with
+              | JTokenType.Integer -> p.Value.Value<int>() |> FieldValue.Int
+              | JTokenType.Float -> p.Value.Value<float>() |> FieldValue.Double
+              | JTokenType.Boolean -> p.Value.Value<bool>() |> FieldValue.Bool
+              | _ -> p.Value.Value<string>() |> FieldValue.String))
     |> dict
 
 module TableRow =
   open Newtonsoft.Json.Linq
 
-  let toJObject (tablekeys : TableKeys, tableFields : TableFields) =
+  let toJObject (tablekeys: TableKeys, tableFields: TableFields) =
     let requiredFields =
       [ JProperty("PartitionKey", tablekeys.PartitonKey)
         JProperty("RowKey", tablekeys.RowKey) ]
@@ -161,3 +158,12 @@ module TableRow =
     let fields = TableFields.toJProperties tableFields
 
     JObject(requiredFields |> List.append fields)
+
+// type IDictionary<'TKey, 'TValue> with
+//   member __.TryAdd(key: 'TKey, value: 'TValue) =
+//     if __.ContainsKey(key) then
+//       __.[key] <- value
+//       false
+//     else
+//       __.Add(key, value)
+//       true
