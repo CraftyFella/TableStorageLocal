@@ -2,7 +2,7 @@ module FakeTablesTests
 
 open Expecto
 open System
-open FakeTableStorage
+open Host
 open Microsoft.Azure.Cosmos.Table
 
 [<Tests>]

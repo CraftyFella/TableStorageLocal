@@ -1,7 +1,7 @@
 [<AutoOpen>]
 module Helpers
 
-open FakeTableStorage
+open Host
 open Microsoft.Azure.Cosmos.Table
 open System
 

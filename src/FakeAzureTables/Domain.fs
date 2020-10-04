@@ -61,7 +61,6 @@ type Command =
   | Get of Table: string * TableKeys
   | Query of Table: string * Filter: string
 
-
 type ConflictReason =
   | TableAlreadyExists
   | KeyAlreadyExists

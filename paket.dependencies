@@ -2,10 +2,11 @@ source https://api.nuget.org/v3/index.json
 storage: none
 framework: netstandard2.1, netcoreapp3.1
 
-nuget FSharp.Core
+
 nuget Expecto
-nuget FParsec
-nuget Microsoft.AspNetCore.Server.Kestrel
 nuget Microsoft.Azure.Cosmos.Table
-nuget Newtonsoft.Json
-nuget Ply
+nuget Microsoft.AspNetCore.Server.Kestrel >= 2.0
+nuget FSharp.Core >= 4.7.0
+nuget FParsec >= 1.1.1
+nuget Newtonsoft.Json >= 12.0
+nuget Ply >= 0.3.1
