@@ -19,6 +19,17 @@ let parserTests =
         Expect.equal actual expected "unexpected result"
       }
 
+      test "partition key with dashes" {
+
+        let actual =
+          "PartitionKey eq 'a70cf19c-b076-40bb-b3c3-682b74981ba6'" |> FilterParser.parse
+
+        let expected =
+          Ok(Filter.PartitionKey(QueryComparison.Equal, "a70cf19c-b076-40bb-b3c3-682b74981ba6"))
+
+        Expect.equal actual expected "unexpected result"
+      }
+
       test "row key" {
 
         let actual = "RowKey eq 'rk'" |> FilterParser.parse

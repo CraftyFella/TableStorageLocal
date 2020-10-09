@@ -52,11 +52,13 @@ module private Parser =
 
     let letterOrNumber = asciiLetter <|> digit
     let manyLettersOrNumbers = many1Chars letterOrNumber
+    let specialChars = many1Chars letterOrNumber
+    let manyCharsNotSingleQuote = (many1Chars (noneOf ['\'']))
 
     let fvString =
         let quote = pchar '\''
-        between quote quote manyLettersOrNumbers
-        |>> FieldValue.String
+        between quote quote manyCharsNotSingleQuote
+        |>> (FieldValue.String)
 
     let fvLongOrBackTrackToInt = (attempt fvLong) <|> fvInt
     let fvDoubleOrBackTrackTo parser = (attempt fvDouble) <|> parser
