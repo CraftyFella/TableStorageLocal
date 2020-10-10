@@ -39,6 +39,7 @@ let searchTests =
         let rowKeys =
           results
           |> Seq.map (fun r -> r.RowKey)
+          |> Seq.sort
           |> Seq.toList
 
         Expect.equal rowKeys [ "rk1"; "rk2"; "rk4"; "rk5" ] "unexpected row Keys"
@@ -173,7 +174,7 @@ let searchTests =
           |> Seq.map (fun r -> r.PartitionKey, r.RowKey)
           |> Seq.toList
 
-        Expect.equal partitionKeysAndRowKeys [ "pk3", "rk3"; ] "unexpected rows"
+        Expect.equal partitionKeysAndRowKeys [ "pk3", "rk3" ] "unexpected rows"
 
         for result in results do
           for field in allFieldTypes () do
@@ -194,7 +195,7 @@ let searchTests =
           createEntityWithString "pk2" "rk3" "Two"
           createEntityWithString "pk3" "rk3" "One"
           createEntityWithString "pk3" "rk4" "Two"
-          createEntityWithString "pk5" "rk5" "Three"]
+          createEntityWithString "pk5" "rk5" "Three" ]
         |> List.iter insert
 
         let filter =
@@ -211,6 +212,7 @@ let searchTests =
         let partitionKeysAndRowKeys =
           results
           |> Seq.map (fun r -> r.PartitionKey, r.RowKey)
+          |> Seq.sort
           |> Seq.toList
 
         Expect.equal partitionKeysAndRowKeys [ "pk2", "rk3"; "pk3", "rk4" ] "unexpected rows"
@@ -233,7 +235,7 @@ let searchTests =
           createEntityWithInt "pk2" "rk3" 2
           createEntityWithInt "pk3" "rk3" 1
           createEntityWithInt "pk3" "rk4" 2
-          createEntityWithInt "pk5" "rk5" 3]
+          createEntityWithInt "pk5" "rk5" 3 ]
         |> List.iter insert
 
         let filter =
@@ -250,6 +252,7 @@ let searchTests =
         let partitionKeysAndRowKeys =
           results
           |> Seq.map (fun r -> r.PartitionKey, r.RowKey)
+          |> Seq.sort
           |> Seq.toList
 
         Expect.equal partitionKeysAndRowKeys [ "pk2", "rk3"; "pk3", "rk4" ] "unexpected rows"

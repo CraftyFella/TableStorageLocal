@@ -4,11 +4,12 @@ open System.Collections.Generic
 open FilterParser
 open FilterApplier
 open Domain
+open System.Collections.Concurrent
 
 let commandHandler (tables: Tables) command =
   match command with
   | CreateTable name ->
-      match tables.TryAdd(name, Dictionary()) with
+      match tables.TryAdd(name, ConcurrentDictionary()) with
       | true -> Ack
       | false -> Conflict TableAlreadyExists
   | InsertOrMerge (table, (keys, fields)) ->
