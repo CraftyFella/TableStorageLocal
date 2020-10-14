@@ -9,10 +9,8 @@ open System.Text.RegularExpressions
 open Domain
 
 module private Request =
-
-  type HttpRequest with
-    member __.BodyString = (new StreamReader(__.Body)).ReadToEnd()
-
+  open Http
+  
   let (|Regex|_|) pattern input =
     match Regex.Match(input, pattern) with
     | m when m.Success ->
