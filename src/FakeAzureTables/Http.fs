@@ -73,7 +73,7 @@ module private Request =
 
   let toCommand =
     function
-    | CreateTableRequest name -> CreateTable name |> Some
+    | CreateTableRequest name -> CreateTable name |> Table |> Some
     | InsertOrMergeRequest (table, partitionKey, rowKey, fields) ->
         InsertOrMerge
           (table,
@@ -81,14 +81,16 @@ module private Request =
                { PartitionKey = partitionKey
                  RowKey = rowKey }
              Fields = (fields |> TableFields.fromJObject) })
+        |> Write
         |> Some
     | InsertOrReplaceRequest (table, partitionKey, rowKey, fields) ->
-        InsertOrMerge
+        InsertOrReplace
           (table,
            { Keys =
                { PartitionKey = partitionKey
                  RowKey = rowKey }
              Fields = (fields |> TableFields.fromJObject) })
+        |> Write
         |> Some
     | InsertRequest (table, partitionKey, rowKey, fields) ->
         Insert
@@ -97,20 +99,23 @@ module private Request =
                { PartitionKey = partitionKey
                  RowKey = rowKey }
              Fields = (fields |> TableFields.fromJObject) })
+        |> Write
         |> Some
     | DeleteRequest (table, partitionKey, rowKey) ->
         Delete
           (table,
            { PartitionKey = partitionKey
              RowKey = rowKey })
+        |> Write
         |> Some
     | GetRequest (table, partitionKey, rowKey) ->
         Get
           (table,
            { PartitionKey = partitionKey
              RowKey = rowKey })
+        |> Read
         |> Some
-    | QueryRequest request -> Query request |> Some
+    | QueryRequest request -> Query request |> Read |> Some
     | _ -> None
 
 let exceptonLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) =

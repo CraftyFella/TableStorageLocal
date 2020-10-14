@@ -15,7 +15,7 @@ module FieldValue =
     match fieldValue with
     | FieldValue.String v -> BsonValue v
     | FieldValue.Bool v -> BsonValue v
-    | FieldValue.Date v -> BsonValue(v.UtcDateTime)
+    | FieldValue.Date v -> BsonValue v.UtcDateTime
     | FieldValue.Double v -> BsonValue v
     | FieldValue.Guid v -> BsonValue v
     | FieldValue.Int v -> BsonValue v

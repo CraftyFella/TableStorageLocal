@@ -8,12 +8,12 @@ let rec applyFilter (col: ILiteCollection<TableRow>) filter =
 
   let queryComparisonExpressionBuilder field qc value =
     match qc with
-    | QueryComparison.Equal -> Query.EQ(field, FieldValue.toBsonValue (value))
-    | QueryComparison.NotEqual -> Query.Not(field, FieldValue.toBsonValue (value))
-    | QueryComparison.GreaterThan -> Query.GT(field, FieldValue.toBsonValue (value))
-    | QueryComparison.GreaterThanOrEqual -> Query.GTE(field, FieldValue.toBsonValue (value))
-    | QueryComparison.LessThan -> Query.LT(field, FieldValue.toBsonValue (value))
-    | QueryComparison.LessThanOrEqual -> Query.LTE(field, FieldValue.toBsonValue (value))
+    | QueryComparison.Equal -> Query.EQ(field, FieldValue.toBsonValue value)
+    | QueryComparison.NotEqual -> Query.Not(field, FieldValue.toBsonValue value)
+    | QueryComparison.GreaterThan -> Query.GT(field, FieldValue.toBsonValue value)
+    | QueryComparison.GreaterThanOrEqual -> Query.GTE(field, FieldValue.toBsonValue value)
+    | QueryComparison.LessThan -> Query.LT(field, FieldValue.toBsonValue value)
+    | QueryComparison.LessThanOrEqual -> Query.LTE(field, FieldValue.toBsonValue value)
 
   let rec filterExpressionBuilder filter =
     match filter with

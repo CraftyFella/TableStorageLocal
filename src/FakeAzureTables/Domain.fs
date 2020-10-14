@@ -22,17 +22,7 @@ type FieldValue =
   | Guid of Guid
   | Int of int32
   | Long of int64
-  member __.AsString =
-    match __ with
-    | String value -> string value
-    | Bool value -> string value
-    | Binary value -> string value
-    | Date value -> string value
-    | Double value -> string value
-    | Guid value -> string value
-    | Int value -> string value
-    | Long value -> string value
-
+  
 [<RequireQualifiedAccess>]
 type TableOperators =
   | And
@@ -57,13 +47,24 @@ type TableRow =
   { Keys: TableKeys
     Fields: TableFields }
 
-type Command =
-  | CreateTable of Name: string
+type TableCommand =
+  | CreateTable of Table: string
+
+type WriteCommand =
   | Insert of Table: string * TableRow
+  | InsertOrReplace of Table: string * TableRow
   | InsertOrMerge of Table: string * TableRow
   | Delete of Table: string * TableKeys
+
+type ReadCommand =
   | Get of Table: string * TableKeys
   | Query of Table: string * Filter: string
+
+type Command =
+  | Write of WriteCommand
+  | Read of ReadCommand
+  | Table of TableCommand
+  | Batch of WriteCommand list
 
 type ConflictReason =
   | TableAlreadyExists
@@ -75,7 +76,6 @@ type CommandResult =
   | GetResponse of TableRow
   | QueryResponse of TableRow list
   | NotFound
-
 
 module TableFields =
   open Newtonsoft.Json.Linq
