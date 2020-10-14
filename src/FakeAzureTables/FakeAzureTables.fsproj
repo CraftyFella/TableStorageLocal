@@ -17,7 +17,7 @@
     <Compile Include="FilterParser.fs" />
     <Compile Include="Bson.fs" />
     <Compile Include="FilterApplier.fs" />
-    <Compile Include="Http.fs" />
+    <Compile Include="HttpContext.fs" />
     <Compile Include="CommandHandler.fs" />
     <Compile Include="Host.fs" />
   </ItemGroup>

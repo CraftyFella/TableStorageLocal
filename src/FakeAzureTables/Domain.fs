@@ -46,7 +46,8 @@ type TableKeys =
 type TableRow =
   { Keys: TableKeys
     Fields: TableFields }
-  member __.Id = (__.Keys.PartitionKey + __.Keys.RowKey).ToLower()
+  member __.Id =
+    (__.Keys.PartitionKey + __.Keys.RowKey).ToLower()
 
 type TableCommand = CreateTable of Table: string
 
@@ -61,9 +62,7 @@ type ReadCommand =
   | Query of Table: string * Filter: string
 
 type BatchCommand =
-  {
-
-    Commands: WriteCommand list }
+  { Commands: WriteCommand list }
 
 type Command =
   | Write of WriteCommand

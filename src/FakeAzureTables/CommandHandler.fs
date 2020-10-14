@@ -70,7 +70,7 @@ type ILiteCollection<'T> with
 let tableNameIsValid tableName =
   Regex.IsMatch(tableName, "^[A-Za-z0-9]{2,62}$")
 
-let commandHandler (db: ILiteDatabase) command =
+let tableCommandHandler (db: ILiteDatabase) command =
   match command with
   | Table command ->
       match command with
@@ -127,12 +127,63 @@ let commandHandler (db: ILiteDatabase) command =
       | Query (table, filter) ->
           let table = db.GetTable table
 
-          let matchingRows =
-            match parse filter with
-            | Result.Ok result -> applyFilter table result
-            | Result.Error error ->
-                printfn "Filter: %A;\nError: %A" filter error
-                Seq.empty
+let writeCommandHandler (db: ILiteDatabase) command =
+  match command with
+  | InsertOrMerge (table, row) ->
+      let table = db.GetTable table
+      table.TryInsert row |> ignore
+      Ack
+  | InsertOrReplace (table, row) ->
+      let table = db.GetTable table
+      table.TryInsert row |> ignore
+      Ack
+  | Insert (table, row) ->
+      let table = db.GetTable table
+      match table.TryInsert row with
+      | true -> Ack
+      | false -> Conflict KeyAlreadyExists
+  | Delete (table, keys) ->
+      let table = db.GetTable table
+      table.DeleteMany(keys |> TableKeys.toBsonExpression)
+      |> ignore
+      Ack
 
-          matchingRows |> Seq.toList |> QueryResponse
-  | Batch command -> NotFound
+let readCommandHandler (db: ILiteDatabase) command =
+  match command with
+  | Get (table, keys) ->
+      let table = db.GetTable table
+      match keys
+            |> TableKeys.toBsonExpression
+            |> table.TryFindOne with
+      | Some row -> GetResponse(row)
+      | _ -> NotFound
+  | Query (table, filter) ->
+      let table = db.GetTable table
+
+      let matchingRows =
+        match parse filter with
+        | Result.Ok result -> applyFilter table result
+        | Result.Error error ->
+            printfn "Filter: %A;\nError: %A" filter error
+            Seq.empty
+
+      matchingRows |> Seq.toList |> QueryResponse
+
+let commandHandler (db: ILiteDatabase) command =
+  let tableCommandHandler = tableCommandHandler db
+  let writeCommandHandler = writeCommandHandler db
+  let readCommandHandler = readCommandHandler db
+  match command with
+  | Table command -> tableCommandHandler command
+  | Write command -> writeCommandHandler command
+  | Read command -> readCommandHandler command
+  | Batch batch ->
+      match db.BeginTrans() with
+      | true ->
+          let results =
+            batch.Commands |> Seq.map writeCommandHandler
+
+          match db.Commit() with
+          | true -> NotFound
+          | false -> failwithf "Failed to commit a transaction"
+      | false -> failwithf "Failed to create a transaction"

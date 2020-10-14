@@ -5,7 +5,7 @@ open Microsoft.AspNetCore.Hosting
 open System.Net.Sockets
 open System.Net
 open Microsoft.AspNetCore.Builder
-open Http
+open HttpContext
 open CommandHandler
 open LiteDB
 
