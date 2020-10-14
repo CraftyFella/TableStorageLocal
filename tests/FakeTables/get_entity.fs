@@ -12,10 +12,11 @@ let get_entity =
     [ test "entity exists" {
         let table = createFakeTables ()
 
-        DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
-        |> TableOperation.InsertOrReplace
-        |> table.Execute
-        |> ignore
+        let fields = allFieldTypes ()
+        let insertResult =
+          DynamicTableEntity("pk2", "r2k", "*", fields)
+          |> TableOperation.Insert
+          |> table.Execute
 
         let actual =
           TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")
@@ -29,7 +30,7 @@ let get_entity =
         Expect.equal (result.PartitionKey) "pk2" "unexpected value"
         Expect.equal (result.RowKey) "r2k" "unexpected value"
 
-        for field in allFieldTypes () do
+        for field in fields do
           Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
 
       }

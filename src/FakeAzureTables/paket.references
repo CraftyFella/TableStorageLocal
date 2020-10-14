@@ -3,3 +3,4 @@ Microsoft.AspNetCore.Server.Kestrel
 Microsoft.AspNetCore.Hosting
 Newtonsoft.Json
 Ply
+LiteDB

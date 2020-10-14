@@ -16,8 +16,9 @@ let createFakeTables () =
   table
 
 let allFieldTypes () =
+  let now = DateTimeOffset(2000, 1, 1, 1, 1, 1, 1, TimeSpan.Zero)
   [ ("StringField", EntityProperty.GeneratePropertyForString("StringValue"))
-    ("DateField", EntityProperty.GeneratePropertyForDateTimeOffset(Nullable DateTimeOffset.MinValue))
+    ("DateField", EntityProperty.GeneratePropertyForDateTimeOffset(Nullable now))
     ("IntField", EntityProperty.GeneratePropertyForInt(Nullable 2))
     ("LongField", EntityProperty.GeneratePropertyForLong(Nullable 3L))
     ("GuidField", EntityProperty.GeneratePropertyForGuid(Nullable(Guid.Empty)))

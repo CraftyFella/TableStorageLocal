@@ -8,7 +8,6 @@ open System.IO
 open System.Text.RegularExpressions
 open Domain
 
-
 module private Request =
 
   type HttpRequest with
@@ -78,45 +77,48 @@ module private Request =
     | InsertOrMergeRequest (table, partitionKey, rowKey, fields) ->
         InsertOrMerge
           (table,
-           ({ PartitonKey = partitionKey
-              RowKey = rowKey },
-            fields |> TableFields.fromJObject))
+           { Keys =
+               { PartitionKey = partitionKey
+                 RowKey = rowKey }
+             Fields = (fields |> TableFields.fromJObject) })
         |> Some
     | InsertOrReplaceRequest (table, partitionKey, rowKey, fields) ->
         InsertOrMerge
           (table,
-           ({ PartitonKey = partitionKey
-              RowKey = rowKey },
-            fields |> TableFields.fromJObject))
+           { Keys =
+               { PartitionKey = partitionKey
+                 RowKey = rowKey }
+             Fields = (fields |> TableFields.fromJObject) })
         |> Some
     | InsertRequest (table, partitionKey, rowKey, fields) ->
         Insert
           (table,
-           ({ PartitonKey = partitionKey
-              RowKey = rowKey },
-            fields |> TableFields.fromJObject))
+           { Keys =
+               { PartitionKey = partitionKey
+                 RowKey = rowKey }
+             Fields = (fields |> TableFields.fromJObject) })
         |> Some
     | DeleteRequest (table, partitionKey, rowKey) ->
         Delete
           (table,
-           { PartitonKey = partitionKey
+           { PartitionKey = partitionKey
              RowKey = rowKey })
         |> Some
     | GetRequest (table, partitionKey, rowKey) ->
         Get
           (table,
-           { PartitonKey = partitionKey
+           { PartitionKey = partitionKey
              RowKey = rowKey })
         |> Some
     | QueryRequest request -> Query request |> Some
     | _ -> None
 
 let exceptonLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) =
-    task {
-      try
-        do! inner ctx
-      with ex -> printfn "Ouch %A" ex
-    } :> Task
+  task {
+    try
+      do! inner ctx
+    with ex -> printfn "Ouch %A" ex
+  } :> Task
 
 let httpHandler commandHandler (ctx: HttpContext) =
   task {

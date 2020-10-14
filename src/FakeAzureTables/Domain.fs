@@ -45,13 +45,17 @@ type Filter =
   | Property of name: string * QueryComparison * FieldValue
   | Combined of Filter * TableOperators * Filter
 
-type TableFields = IDictionary<string, FieldValue>
+type TableFields = Dictionary<string, FieldValue>
 
-type TableKeys = { PartitonKey: string; RowKey: string }
+[<CLIMutable>]
+type TableKeys =
+  { PartitionKey: string
+    RowKey: string }
 
-type TableRow = TableKeys * TableFields
-
-type Tables = IDictionary<string, IDictionary<TableKeys, TableFields>> // Need this to be a dictionary so I can add things to it
+[<CLIMutable>]
+type TableRow =
+  { Keys: TableKeys
+    Fields: TableFields }
 
 type Command =
   | CreateTable of Name: string
@@ -106,7 +110,7 @@ module TableFields =
 
     fields
 
-  let fromJObject (jObject: JObject) =
+  let fromJObject (jObject: JObject) : TableFields =
     let oDataFields =
       jObject.Properties()
       |> Seq.filter (fun p -> p.Name.EndsWith "@odata.type")
@@ -145,13 +149,14 @@ module TableFields =
               | JTokenType.Boolean -> p.Value.Value<bool>() |> FieldValue.Bool
               | _ -> p.Value.Value<string>() |> FieldValue.String))
     |> dict
+    |> Dictionary
 
 module TableRow =
   open Newtonsoft.Json.Linq
 
-  let toJObject (tablekeys: TableKeys, tableFields: TableFields) =
+  let toJObject ({ Keys = tablekeys; Fields = tableFields }) =
     let requiredFields =
-      [ JProperty("PartitionKey", tablekeys.PartitonKey)
+      [ JProperty("PartitionKey", tablekeys.PartitionKey)
         JProperty("RowKey", tablekeys.RowKey) ]
 
     let fields = TableFields.toJProperties tableFields

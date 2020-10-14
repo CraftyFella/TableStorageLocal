@@ -1,40 +1,55 @@
 module CommandHandler
 
-open System.Collections.Generic
 open FilterParser
 open FilterApplier
 open Domain
-open System.Collections.Concurrent
+open LiteDB
+open Bson
 
-let commandHandler (tables: Tables) command =
+type ILiteDatabase with
+  member __.TableExists = __.CollectionExists
+
+  member __.GetTable(table: string) =
+    let col = __.GetCollection<TableRow> table
+    col.EnsureIndex("PK_RK_UNIQUE", BsonExpression.Create("LOWER($.Keys.PartitionKey + $.Keys.RowKey)"), true)
+    |> ignore
+    col
+
+type ILiteCollection<'T> with
+  member __.TryInsert(row: 'T) =
+    try
+      __.Insert(row) |> ignore
+      true
+    with ex -> if ex.Message.Contains("PK_RK_UNIQUE") then false else reraise ()
+
+  member __.TryFindOne(predicate: BsonExpression) = __.Find(predicate) |> Seq.tryHead
+
+let commandHandler (db: ILiteDatabase) command =
   match command with
-  | CreateTable name ->
-      match tables.TryAdd(name, ConcurrentDictionary()) with
+  | CreateTable table ->
+      match db.TableExists table with
+      | true -> Conflict TableAlreadyExists
+      | false ->
+          db.GetTable table |> ignore
+          Ack
+  | InsertOrMerge (table, row) ->
+      let table = db.GetTable table
+      table.TryInsert row |> ignore
+      Ack
+  | Insert (table, row) ->
+      let table = db.GetTable table
+      match table.TryInsert row with
       | true -> Ack
-      | false -> Conflict TableAlreadyExists
-  | InsertOrMerge (table, (keys, fields)) ->
-      let table = tables.[table]
-      match table.ContainsKey keys with
-      | true ->
-          table.[keys] <- fields
-          Ack
-      | false ->
-          table.Add(keys, fields) |> ignore
-          Ack
-  | Insert (table, (keys, fields)) ->
-      let table = tables.[table]
-      match table.ContainsKey keys with
-      | true -> Conflict KeyAlreadyExists
-      | false ->
-          table.Add(keys, fields) |> ignore
-          Ack
+      | false -> Conflict KeyAlreadyExists
   | Get (table, keys) ->
-      let table = tables.[table]
-      match table.TryGetValue(keys) with
-      | true, fields -> GetResponse(keys, fields)
+      let table = db.GetTable table
+      match keys
+            |> TableKeys.toBsonExpression
+            |> table.TryFindOne with
+      | Some row -> GetResponse(row)
       | _ -> NotFound
   | Query (table, filter) ->
-      let table = tables.[table]
+      let table = db.GetTable table
 
       let matchingRows =
         match parse filter with
@@ -45,6 +60,7 @@ let commandHandler (tables: Tables) command =
 
       matchingRows |> Seq.toList |> QueryResponse
   | Delete (table, keys) ->
-      let table = tables.[table]
-      table.Remove(keys) |> ignore
+      let table = db.GetTable table
+      table.DeleteMany(keys |> TableKeys.toBsonExpression)
+      |> ignore
       Ack

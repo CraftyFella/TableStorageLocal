@@ -1,8 +1,6 @@
 module search_entities
 
 open Expecto
-open System
-open Host
 open Microsoft.Azure.Cosmos.Table
 
 [<Tests>]

@@ -4,6 +4,7 @@ storage: none
 framework: netstandard2.1, netcoreapp3.1
 
 nuget Expecto
+nuget LiteDB
 nuget Microsoft.Azure.Cosmos.Table
 nuget Microsoft.AspNetCore.Server.Kestrel
 nuget Microsoft.AspNetCore.Hosting

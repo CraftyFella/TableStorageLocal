@@ -1,100 +1,31 @@
 module FilterApplier
 
 open Domain
-open System.Collections.Generic
+open LiteDB
+open Bson
 
-let rec applyFilter (rows: IDictionary<TableKeys, TableFields>) filter =
+let rec applyFilter (col: ILiteCollection<TableRow>) filter =
 
-  let compareFields left qc right =
-
-    let fieldsEqual (left, right) = left = right
-
-    let fieldsGreaterThan (left, right) =
-      match left, right with
-      | FieldValue.Int left, FieldValue.Int right -> left > right
-      | FieldValue.Long left, FieldValue.Long right -> left > right
-      | FieldValue.Date left, FieldValue.Date right -> left > right
-      | FieldValue.Guid left, FieldValue.Guid right -> left > right
-      | FieldValue.Binary left, FieldValue.Binary right -> left > right
-      | FieldValue.Bool left, FieldValue.Bool right -> left > right
-      | FieldValue.Double left, FieldValue.Double right -> left > right
-      | _, _ -> left.AsString > right.AsString
-
-    let fieldsGreaterThanOrEqual (left, right) =
-      match left, right with
-      | FieldValue.Int left, FieldValue.Int right -> left >= right
-      | FieldValue.Long left, FieldValue.Long right -> left >= right
-      | FieldValue.Date left, FieldValue.Date right -> left >= right
-      | FieldValue.Guid left, FieldValue.Guid right -> left >= right
-      | FieldValue.Binary left, FieldValue.Binary right -> left >= right
-      | FieldValue.Bool left, FieldValue.Bool right -> left >= right
-      | FieldValue.Double left, FieldValue.Double right -> left >= right
-      | _, _ -> left.AsString >= right.AsString
-
-    let fieldsLessThan (left, right) =
-      match left, right with
-      | FieldValue.Int left, FieldValue.Int right -> left < right
-      | FieldValue.Long left, FieldValue.Long right -> left < right
-      | FieldValue.Date left, FieldValue.Date right -> left < right
-      | FieldValue.Guid left, FieldValue.Guid right -> left < right
-      | FieldValue.Binary left, FieldValue.Binary right -> left < right
-      | FieldValue.Bool left, FieldValue.Bool right -> left < right
-      | FieldValue.Double left, FieldValue.Double right -> left < right
-      | _, _ -> left.AsString < right.AsString
-
-    let fieldsLessThanOrEqual (left, right) =
-      match left, right with
-      | FieldValue.Int left, FieldValue.Int right -> left <= right
-      | FieldValue.Long left, FieldValue.Long right -> left <= right
-      | FieldValue.Date left, FieldValue.Date right -> left <= right
-      | FieldValue.Guid left, FieldValue.Guid right -> left <= right
-      | FieldValue.Binary left, FieldValue.Binary right -> left <= right
-      | FieldValue.Bool left, FieldValue.Bool right -> left <= right
-      | FieldValue.Double left, FieldValue.Double right -> left <= right
-      | _, _ -> left.AsString <= right.AsString
-
+  let queryComparisonExpressionBuilder field qc value =
     match qc with
-    | QueryComparison.Equal -> fieldsEqual (left, right)
-    | QueryComparison.NotEqual -> fieldsEqual (left, right) |> not
-    | QueryComparison.GreaterThan -> fieldsGreaterThan (left, right)
-    | QueryComparison.GreaterThanOrEqual -> fieldsGreaterThanOrEqual (left, right)
-    | QueryComparison.LessThan -> fieldsLessThan (left, right)
-    | QueryComparison.LessThanOrEqual -> fieldsLessThanOrEqual (left, right)
+    | QueryComparison.Equal -> Query.EQ(field, FieldValue.toBsonValue (value))
+    | QueryComparison.NotEqual -> Query.Not(field, FieldValue.toBsonValue (value))
+    | QueryComparison.GreaterThan -> Query.GT(field, FieldValue.toBsonValue (value))
+    | QueryComparison.GreaterThanOrEqual -> Query.GTE(field, FieldValue.toBsonValue (value))
+    | QueryComparison.LessThan -> Query.LT(field, FieldValue.toBsonValue (value))
+    | QueryComparison.LessThanOrEqual -> Query.LTE(field, FieldValue.toBsonValue (value))
 
-  let toSeq (dictionary: KeyValuePair<_, _> seq) =
-    dictionary
-    |> Seq.map (fun kvp -> kvp.Key, kvp.Value)
+  let rec filterExpressionBuilder filter =
+    match filter with
+    | Filter.PartitionKey (qc, pk) -> queryComparisonExpressionBuilder "$.Keys.PartitionKey" qc (FieldValue.String pk)
+    | Filter.RowKey (qc, rk) -> queryComparisonExpressionBuilder "$.Keys.RowKey" qc (FieldValue.String rk)
+    | Filter.Property (name, qc, value) -> queryComparisonExpressionBuilder (sprintf "$.Fields.%s" name) qc value
+    | Filter.Combined (left, tableOperator, right) ->
+        let leftExpression = filterExpressionBuilder left
+        let rightExpression = filterExpressionBuilder right
+        match tableOperator with
+        | TableOperators.And -> Query.And(leftExpression, rightExpression)
+        | TableOperators.Or -> Query.Or(leftExpression, rightExpression)
 
-  match filter with
-  | Filter.PartitionKey (qc, pk) ->
-      rows
-      |> toSeq
-      |> Seq.filter (fun (keys, _) -> compareFields (FieldValue.String keys.PartitonKey) qc (FieldValue.String pk))
-  | Filter.RowKey (qc, rk) ->
-      rows
-      |> toSeq
-      |> Seq.filter (fun (keys, _) -> compareFields (FieldValue.String keys.RowKey) qc (FieldValue.String rk))
-  | Filter.Property (name, qc, value) ->
-      rows
-      |> toSeq
-      |> Seq.filter (fun (_, values) ->
-           values
-           |> toSeq
-           |> Seq.tryFind (fun (n, _) -> n = name)
-           |> function
-           | Some (_, v) -> (compareFields v qc value)
-           | _ -> false)
-  | Filter.Combined (left, tableOperator, right) ->
-      match tableOperator with
-      | TableOperators.And ->
-          let results = applyFilter rows left |> dict
-          applyFilter results right
-      | TableOperators.Or ->
-          let leftResults = applyFilter rows left
-          let rightResults = applyFilter rows right
-          let results = Dictionary()
-          leftResults
-          |> Seq.iter (fun (keys, values) -> results.TryAdd(keys, values) |> ignore)
-          rightResults
-          |> Seq.iter (fun (keys, values) -> results.TryAdd(keys, values) |> ignore)
-          results |> toSeq
+  let expression = filterExpressionBuilder filter
+  col.Find expression

@@ -1,13 +1,14 @@
 module Host
 
 open System
-open System.Collections.Generic
 open Microsoft.AspNetCore.Hosting
 open System.Net.Sockets
 open System.Net
 open Microsoft.AspNetCore.Builder
 open Http
 open CommandHandler
+open LiteDB
+open Domain
 
 let private findPort () =
   TcpListener(IPAddress.Loopback, 0)
@@ -18,12 +19,15 @@ let private findPort () =
             l.Stop()
             p
 
-let private app tables (appBuilder: IApplicationBuilder) =
-  let inner = httpHandler (commandHandler tables)
+let private app db (appBuilder: IApplicationBuilder) =
+  let inner = httpHandler (commandHandler db)
   appBuilder.Run(fun ctx -> exceptonLoggingHttpHandler inner ctx)
 
 type FakeTables() =
-  let tables = Dictionary<string, _>()
+
+  let db =
+    new LiteDatabase("filename=:memory:", Bson.FieldValue.mapper ())
+
   let port = findPort ()
   // let port = 10002
   let url = sprintf "http://127.0.0.1:%i" port
@@ -34,15 +38,14 @@ type FakeTables() =
       port
 
   let webHost =
-    WebHostBuilder().Configure(fun appBuilder -> app tables appBuilder).UseUrls(url)
+    WebHostBuilder().Configure(fun appBuilder -> app db appBuilder).UseUrls(url)
       .UseKestrel(fun options -> options.AllowSynchronousIO <- true).Build()
 
   do webHost.Start()
 
-  member __.ConnectionString =
-    connectionString
-
-  member __.Tables = tables
+  member __.ConnectionString = connectionString
 
   interface IDisposable with
-    member __.Dispose() = webHost.Dispose()
+    member __.Dispose() =
+      db.Dispose()
+      webHost.Dispose()
