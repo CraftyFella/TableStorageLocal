@@ -22,7 +22,7 @@ type FieldValue =
   | Guid of Guid
   | Int of int32
   | Long of int64
-  
+
 [<RequireQualifiedAccess>]
 type TableOperators =
   | And
@@ -60,11 +60,16 @@ type ReadCommand =
   | Get of Table: string * TableKeys
   | Query of Table: string * Filter: string
 
+type BatchCommand = {
+  
+  Commands : WriteCommand list
+}
+
 type Command =
   | Write of WriteCommand
   | Read of ReadCommand
   | Table of TableCommand
-  | Batch of WriteCommand list
+  | Batch of BatchCommand
 
 type ConflictReason =
   | TableAlreadyExists
