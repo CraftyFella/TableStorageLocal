@@ -1,13 +1,13 @@
-module ParserTests
+module FilterParserTests
 
 open Expecto
 open Domain
 open System
 
 [<Tests>]
-let parserTests =
+let filterParserTests =
   testList
-    "ParserTests"
+    "FilterParserTests"
     [ test "partition key" {
 
         let actual =
@@ -110,13 +110,32 @@ let parserTests =
         Expect.equal actual expected "unexpected result"
       }
 
+      test "property (Double -ve)" {
 
-      test "property (Double)" {
+        let actual = "Field eq -0.5" |> FilterParser.parse
+
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Double -0.5))
+
+        Expect.equal actual expected "unexpected result"
+      }
+
+      test "property (Double with 0)" {
 
         let actual = "Field eq 1.0" |> FilterParser.parse
 
         let expected =
           Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Double 1.))
+
+        Expect.equal actual expected "unexpected result"
+      }
+
+      test "property (Double)" {
+
+        let actual = "Field eq 1.1" |> FilterParser.parse
+
+        let expected =
+          Ok(Filter.Property("Field", QueryComparison.Equal, FieldValue.Double 1.1))
 
         Expect.equal actual expected "unexpected result"
       }
