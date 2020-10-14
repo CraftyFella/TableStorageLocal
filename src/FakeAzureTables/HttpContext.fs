@@ -4,13 +4,12 @@ open Newtonsoft.Json.Linq
 open Microsoft.AspNetCore.Http
 open FSharp.Control.Tasks
 open System.Threading.Tasks
-open System.IO
 open System.Text.RegularExpressions
 open Domain
 
+
 module private Request =
   open Http
-  
   let (|Regex|_|) pattern input =
     match Regex.Match(input, pattern) with
     | m when m.Success ->
@@ -21,30 +20,30 @@ module private Request =
         |> Some
     | _ -> None
 
-  let private (|QueryRequest|_|) (request: HttpRequest) =
-    match request.Path.Value with
+  let private (|QueryRequest|_|) (request: Request) =
+    match request.Path with
     | Regex "^\/devstoreaccount1\/(\w+)$" [ tableName ] ->
         match request.Query.ContainsKey("$filter") with
-        | true -> Some(tableName, request.Query.Item "$filter" |> string)
+        | true -> Some(tableName, request.Query.Item "$filter" |> Array.head)
         | false -> None
     | _ -> None
 
-  let private (|CreateTableRequest|_|) (request: HttpRequest) =
-    match request.Path.Value with
+  let private (|CreateTableRequest|_|) (request: Request) =
+    match request.Path with
     | "/devstoreaccount1/Tables()" ->
-        let jObject = JObject.Parse request.BodyString
+        let jObject = JObject.Parse request.Body
         match jObject.TryGetValue "TableName" with
         | true, tableName -> Some(string tableName)
         | _ -> None
     | _ -> None
 
 
-  let private (|InsertRequest|_|) (request: HttpRequest) =
-    match request.Path.Value with
+  let private (|InsertRequest|_|) (request: Request) =
+    match request.Path with
     | Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName ] ->
         match request.Method with
-        | "POST" ->
-            let jObject = JObject.Parse request.BodyString
+        | Method.POST ->
+            let jObject = JObject.Parse request.Body
             match jObject.TryGetValue "PartitionKey" with
             | true, p ->
                 match jObject.TryGetValue "RowKey" with
@@ -54,18 +53,18 @@ module private Request =
         | _ -> None
     | _ -> None
 
-  let private (|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|) (request: HttpRequest) =
-    match request.Path.Value with
+  let private (|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|) (request: Request) =
+    match request.Path with
     | Regex "^\/devstoreaccount1\/(\w+)\(PartitionKey='(.+)',RowKey='(.+)'\)$" [ tableName; p; r ] ->
         match request.Method with
-        | "POST" ->
-            let jObject = JObject.Parse request.BodyString
+        | Method.POST ->
+            let jObject = JObject.Parse request.Body
             InsertOrMergeRequest(tableName, p, r, jObject)
-        | "PUT" ->
-            let jObject = JObject.Parse request.BodyString
+        | Method.PUT ->
+            let jObject = JObject.Parse request.Body
             InsertOrReplaceRequest(tableName, p, r, jObject)
-        | "GET" -> GetRequest(tableName, p, r)
-        | "DELETE" -> DeleteRequest(tableName, p, r)
+        | Method.GET -> GetRequest(tableName, p, r)
+        | Method.DELETE -> DeleteRequest(tableName, p, r)
         | _ -> NotFoundRequest
     | _ -> NotFoundRequest
 
@@ -125,7 +124,7 @@ let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) 
 
 let httpHandler commandHandler (ctx: HttpContext) =
   task {
-    match ctx.Request |> Request.toCommand with
+    match ctx.Request |> Http.toRequest |> Request.toCommand with
     | Some command ->
         let response = commandHandler command
         match response with

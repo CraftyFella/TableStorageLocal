@@ -3,6 +3,7 @@ open Microsoft.AspNetCore.Http
 open System.IO
 open System.Collections.Generic
 open System
+open Microsoft.AspNetCore.Http.Extensions
 
 type HttpRequest with
   member __.BodyString = (new StreamReader(__.Body)).ReadToEnd()
@@ -48,7 +49,7 @@ let toRequest (request: HttpRequest): Request =
       request.Query
       |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
       |> dict
-    Uri = request.Path.Value |> Uri }
+    Uri = request.GetDisplayUrl() |> Uri }
 
 [<RequireQualifiedAccess>]
 module private Parser =
