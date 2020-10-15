@@ -189,7 +189,9 @@ let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) 
   task {
     try
       do! inner ctx
-    with ex -> printfn "Ouch %A" ex
+    with ex ->
+      printfn "Ouch %A" ex
+      ctx.Response.StatusCode <- 500
   } :> Task
 
 let httpHandler commandHandler (ctx: HttpContext) =

@@ -131,11 +131,11 @@ let readCommandHandler (db: ILiteDatabase) command =
         match filter with
         | None -> applyFilter table Filter.All
         | Some filter ->
-          match parse filter with
-          | Ok filter -> applyFilter table filter
-          | Error error ->
-              printfn "Filter: %A;\nError: %A" filter error
-              Seq.empty
+            match parse filter with
+            | Ok filter -> applyFilter table filter
+            | Error error ->
+                printfn "Filter: %A;\nError: %A" filter error
+                Seq.empty
 
       matchingRows |> Seq.toList |> QueryResponse
 
@@ -151,15 +151,14 @@ let commandHandler (db: ILiteDatabase) command =
       match db.BeginTrans() with
       | true ->
           try
+
             let commandResults =
               batch.Commands |> List.map writeCommandHandler
 
-            match db.Commit() with
-            | true ->
-                { CommandResponses = commandResults }
-                |> BatchResponse
-            | false -> failwithf "Failed to commit a transaction"
+            db.Commit() |> ignore
+
+            { CommandResponses = commandResults }
+            |> BatchResponse
           with ex ->
             db.Rollback() |> ignore
             reraise ()
-      | false -> failwithf "Failed to create a transaction"
