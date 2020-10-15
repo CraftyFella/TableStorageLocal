@@ -71,12 +71,16 @@ module Response =
     let headers =
       response.Headers
       |> Seq.map (fun kvp -> sprintf "%s: %s" kvp.Key kvp.Value)
+      |> fun h -> String.Join("\n", h)
 
     let sb = StringBuilder()
     sb.Append rawStatusCode |> ignore
-    headers |> Seq.map sb.Append |> ignore
+    sb.AppendLine() |> ignore
+    sb.Append headers |> ignore
+    sb.AppendLine() |> ignore
     if response.Body <> null then sb.Append response.Body |> ignore
-    sb.ToString()
+    let raw = sb.ToString()
+    raw
 
 let toMethod m =
   Enum.Parse(typeof<Method>, m, true) :?> Method

@@ -1,7 +1,7 @@
-POST http://localhost.charlesproxy.com:62618/devstoreaccount1/test() HTTP/1.1
+POST http://localhost.charlesproxy.com:58858/devstoreaccount1/test() HTTP/1.1
 Accept: application/json;odata=minimalmetadata
 Content-Type: application/json
 Prefer: return-no-content
 DataServiceVersion: 3.0;
 
-{"PartitionKey":"pk2","RowKey":"2","StringField":"thing"}
+{"PartitionKey":"pk2","RowKey":"6","StringField":"thing"}

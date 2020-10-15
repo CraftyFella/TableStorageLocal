@@ -18,7 +18,8 @@
     <Compile Include="Bson.fs" />
     <Compile Include="FilterApplier.fs" />
     <Compile Include="Http.fs" />
-    <Compile Include="BatchHttp.fs" />
+    <Compile Include="HttpRequest.fs" />
+    <Compile Include="HttpBatch.fs" />
     <Compile Include="HttpContext.fs" />
     <Compile Include="CommandHandler.fs" />
     <Compile Include="Host.fs" />

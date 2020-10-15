@@ -204,7 +204,7 @@ let httpHandler commandHandler (ctx: HttpContext) =
             | TableCommandResponse.Conflict _ -> ctx.Response.StatusCode <- 409
         | WriteResponse writeResponse ->
             match writeResponse with
-            | Ack -> ctx.Response.StatusCode <- 204
+            | Ack _ -> ctx.Response.StatusCode <- 204
             | Conflict _ -> ctx.Response.StatusCode <- 409
         | ReadResponse readResponse ->
             match readResponse with
@@ -226,7 +226,7 @@ let httpHandler commandHandler (ctx: HttpContext) =
                 do! json |> ctx.Response.WriteAsync
             | ReadCommandResponse.NotFoundResponse -> ctx.Response.StatusCode <- 404
         | BatchResponse commandResults ->
-            let response = BatchHttp.toHttpResponse commandResults
+            let response = HttpBatch.toHttpResponse commandResults
             ctx.Response.StatusCode <- int response.StatusCode
             response.Headers
             |> Seq.iter (fun kvp -> ctx.Response.Headers.Add(kvp.Key, StringValues(kvp.Value)))

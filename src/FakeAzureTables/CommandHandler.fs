@@ -132,21 +132,21 @@ let writeCommandHandler (db: ILiteDatabase) command =
   | InsertOrMerge (table, row) ->
       let table = db.GetTable table
       table.TryInsert row |> ignore
-      Ack
+      Ack(row.Keys, System.DateTimeOffset.UtcNow)
   | InsertOrReplace (table, row) ->
       let table = db.GetTable table
       table.TryInsert row |> ignore
-      Ack
+      Ack(row.Keys, System.DateTimeOffset.UtcNow)
   | Insert (table, row) ->
       let table = db.GetTable table
       match table.TryInsert row with
-      | true -> Ack
+      | true -> Ack(row.Keys, System.DateTimeOffset.UtcNow)
       | false -> Conflict KeyAlreadyExists
   | Delete (table, keys) ->
       let table = db.GetTable table
       table.DeleteMany(keys |> TableKeys.toBsonExpression)
       |> ignore
-      Ack
+      Ack(keys, System.DateTimeOffset.UtcNow)
 
 let readCommandHandler (db: ILiteDatabase) command =
   match command with

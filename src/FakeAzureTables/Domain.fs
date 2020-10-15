@@ -79,7 +79,7 @@ type TableCommandResponse =
   | Ack
   | Conflict of TableConflictReason
 type WriteCommandResponse =
-  | Ack
+  | Ack of TableKeys * DateTimeOffset
   | Conflict of WriteConflictReason
 
 type ReadCommandResponse =
