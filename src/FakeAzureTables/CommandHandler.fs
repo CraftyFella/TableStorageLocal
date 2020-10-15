@@ -5,9 +5,9 @@ open FilterApplier
 open Domain
 open LiteDB
 open Bson
-open System.Text.RegularExpressions
 open System
 open System.Collections.Generic
+open System.Text.RegularExpressions
 
 let randomString =
   let chars =
@@ -70,69 +70,93 @@ type ILiteCollection<'T> with
 let tableNameIsValid tableName =
   Regex.IsMatch(tableName, "^[A-Za-z0-9]{2,62}$")
 
-let commandHandler (db: ILiteDatabase) command =
+let tableCommandHandler (db: ILiteDatabase) command =
   match command with
-  | Table command ->
-      match command with
-      | CreateTable table ->
-          match db.TableExists table, tableNameIsValid table with
-          | true, _ -> Conflict TableAlreadyExists
-          | _, false -> Conflict InvalidTableName
-          | _ ->
-              db.GetTable table |> ignore
-              Ack
-  | Write command ->
-      match command with
-      | InsertOrMerge (table, newRow) ->
-          let table = db.GetTable table
+  | CreateTable table ->
+      match db.TableExists table, tableNameIsValid table with
+      | true, _ -> TableCommandResponse.Conflict TableAlreadyExists
+      | _, false -> TableCommandResponse.Conflict InvalidTableName
+      | _ ->
+          db.GetTable table |> ignore
+          TableCommandResponse.Ack
 
-          let row =
-            match newRow.Keys
-                  |> TableKeys.toBsonExpression
-                  |> table.TryFindOne with
-            | Some existingRow ->
-                let mergedRow = { newRow with Fields = Dictionary() }
-                for (KeyValue (name, existingValue)) in existingRow.Fields do
-                  match newRow.Fields.TryGetValue name with
-                  | true, newValue -> mergedRow.Fields.Add(name, newValue)
-                  | _ -> mergedRow.Fields.Add(name, existingValue)
-                mergedRow
-            | _ -> newRow
+let writeCommandHandler (db: ILiteDatabase) command =
+  match command with
+  | InsertOrMerge (table, newRow) ->
+      let table = db.GetTable table
 
-          table.Upsert row |> ignore
-          Ack
-      | InsertOrReplace (table, row) ->
-          let table = db.GetTable table
-          table.Upsert row |> ignore
-          Ack
-      | Insert (table, row) ->
-          let table = db.GetTable table
-          match table.TryInsert row with
-          | true -> Ack
-          | false -> Conflict KeyAlreadyExists
-      | Delete (table, keys) ->
-          let table = db.GetTable table
-          table.DeleteMany(keys |> TableKeys.toBsonExpression)
-          |> ignore
-          Ack
-  | Read command ->
-      match command with
-      | Get (table, keys) ->
-          let table = db.GetTable table
-          match keys
-                |> TableKeys.toBsonExpression
-                |> table.TryFindOne with
-          | Some row -> GetResponse row
-          | _ -> NotFound
-      | Query (table, filter) ->
-          let table = db.GetTable table
+      let row =
+        match newRow.Keys
+              |> TableKeys.toBsonExpression
+              |> table.TryFindOne with
+        | Some existingRow ->
+            let mergedRow = { newRow with Fields = Dictionary() }
+            for (KeyValue (name, existingValue)) in existingRow.Fields do
+              match newRow.Fields.TryGetValue name with
+              | true, newValue -> mergedRow.Fields.Add(name, newValue)
+              | _ -> mergedRow.Fields.Add(name, existingValue)
+            mergedRow
+        | _ -> newRow
 
-          let matchingRows =
-            match parse filter with
-            | Result.Ok result -> applyFilter table result
-            | Result.Error error ->
-                printfn "Filter: %A;\nError: %A" filter error
-                Seq.empty
+      table.Upsert row |> ignore
+      WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
+  | InsertOrReplace (table, row) ->
+      let table = db.GetTable table
+      table.Upsert row |> ignore
+      WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
+  | Insert (table, row) ->
+      let table = db.GetTable table
+      match table.TryInsert row with
+      | true -> WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
+      | false -> WriteCommandResponse.Conflict KeyAlreadyExists
+  | Delete (table, keys) ->
+      let table = db.GetTable table
+      table.DeleteMany(keys |> TableKeys.toBsonExpression)
+      |> ignore
+      WriteCommandResponse.Ack(keys, System.DateTimeOffset.UtcNow)
 
-          matchingRows |> Seq.toList |> QueryResponse
-  | Batch command -> NotFound
+let readCommandHandler (db: ILiteDatabase) command =
+  match command with
+  | Get (table, keys) ->
+      let table = db.GetTable table
+      match keys
+            |> TableKeys.toBsonExpression
+            |> table.TryFindOne with
+      | Some row -> GetResponse(row)
+      | _ -> ReadCommandResponse.NotFoundResponse
+  | Query (table, filter) ->
+      let table = db.GetTable table
+
+      let matchingRows =
+        match parse filter with
+        | Ok result -> applyFilter table result
+        | Error error ->
+            printfn "Filter: %A;\nError: %A" filter error
+            Seq.empty
+
+      matchingRows |> Seq.toList |> QueryResponse
+
+let commandHandler (db: ILiteDatabase) command =
+  let tableCommandHandler = tableCommandHandler db
+  let writeCommandHandler = writeCommandHandler db
+  let readCommandHandler = readCommandHandler db
+  match command with
+  | Table command -> command |> tableCommandHandler |> TableResponse
+  | Write command -> command |> writeCommandHandler |> WriteResponse
+  | Read command -> command |> readCommandHandler |> ReadResponse
+  | Batch batch ->
+      match db.BeginTrans() with
+      | true ->
+          try
+            let commandResults =
+              batch.Commands |> List.map writeCommandHandler
+
+            match db.Commit() with
+            | true ->
+                { CommandResponses = commandResults }
+                |> BatchResponse
+            | false -> failwithf "Failed to commit a transaction"
+          with ex ->
+            db.Rollback() |> ignore
+            reraise ()
+      | false -> failwithf "Failed to create a transaction"

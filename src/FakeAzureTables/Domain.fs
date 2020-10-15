@@ -46,7 +46,8 @@ type TableKeys =
 type TableRow =
   { Keys: TableKeys
     Fields: TableFields }
-  member __.Id = (__.Keys.PartitionKey + __.Keys.RowKey).ToLower()
+  member __.Id =
+    (__.Keys.PartitionKey + __.Keys.RowKey).ToLower()
 
 type TableCommand = CreateTable of Table: string
 
@@ -61,9 +62,7 @@ type ReadCommand =
   | Query of Table: string * Filter: string
 
 type BatchCommand =
-  {
-
-    Commands: WriteCommand list }
+  { Commands: WriteCommand list }
 
 type Command =
   | Write of WriteCommand
@@ -71,17 +70,32 @@ type Command =
   | Table of TableCommand
   | Batch of BatchCommand
 
-type ConflictReason =
+type TableConflictReason =
   | TableAlreadyExists
   | InvalidTableName
-  | KeyAlreadyExists
 
-type CommandResult =
+type WriteConflictReason =
+  | KeyAlreadyExists
+type TableCommandResponse =
   | Ack
-  | Conflict of ConflictReason
+  | Conflict of TableConflictReason
+type WriteCommandResponse =
+  | Ack of TableKeys * DateTimeOffset
+  | Conflict of WriteConflictReason
+
+type ReadCommandResponse =
   | GetResponse of TableRow
   | QueryResponse of TableRow list
-  | NotFound
+  | NotFoundResponse
+
+type BatchCommandResponse = { CommandResponses: WriteCommandResponse list }
+
+type CommandResult =
+  | TableResponse of TableCommandResponse
+  | WriteResponse of WriteCommandResponse
+  | ReadResponse of ReadCommandResponse
+  | BatchResponse of BatchCommandResponse
+  | NotFoundResponse
 
 module TableFields =
   open Newtonsoft.Json.Linq

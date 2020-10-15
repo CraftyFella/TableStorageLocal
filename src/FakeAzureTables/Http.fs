@@ -1,154 +1,103 @@
 module Http
 
-open Newtonsoft.Json.Linq
 open Microsoft.AspNetCore.Http
-open FSharp.Control.Tasks
-open System.Threading.Tasks
 open System.IO
-open System.Text.RegularExpressions
-open Domain
+open System.Collections.Generic
+open System
+open Microsoft.AspNetCore.Http.Extensions
+open System.Text
 
-module private Request =
+type HttpRequest with
+  member __.BodyString = (new StreamReader(__.Body)).ReadToEnd()
 
-  type HttpRequest with
-    member __.BodyString = (new StreamReader(__.Body)).ReadToEnd()
+[<RequireQualifiedAccess>]
+type internal Headers = (string * string) seq
 
-  let (|Regex|_|) pattern input =
-    match Regex.Match(input, pattern) with
-    | m when m.Success ->
-        m.Groups
-        |> Seq.skip 1
-        |> Seq.map (fun g -> g.Value)
-        |> Seq.toList
-        |> Some
-    | _ -> None
+[<RequireQualifiedAccess>]
+type internal Body = string
 
-  let private (|QueryRequest|_|) (request: HttpRequest) =
-    match request.Path.Value with
-    | Regex "^\/devstoreaccount1\/(\w+)$" [ tableName ] ->
-        match request.Query.ContainsKey("$filter") with
-        | true -> Some(tableName, request.Query.Item "$filter" |> string)
-        | false -> None
-    | _ -> None
+[<RequireQualifiedAccess>]
+type Method =
+  | Delete = 0
+  | Get = 1
+  | Head = 2
+  | Options = 3
+  | Post = 4
+  | Put = 5
+  | Trace = 6
+  | Patch = 7
 
-  let private (|CreateTableRequest|_|) (request: HttpRequest) =
-    match request.Path.Value with
-    | "/devstoreaccount1/Tables()" ->
-        let jObject = JObject.Parse request.BodyString
-        match jObject.TryGetValue "TableName" with
-        | true, tableName -> Some(string tableName)
-        | _ -> None
-    | _ -> None
+[<RequireQualifiedAccess>]
+type Request =
+  { Method: Method
+    Path: string
+    Body: string
+    Headers: IDictionary<string, string array>
+    Query: IDictionary<string, string array>
+    Uri: Uri }
 
+[<RequireQualifiedAccess>]
+type StatusCode =
+  | Ok = 200
+  | NoContent = 204
+  | Accepted = 202
+  | BadRequest = 400
+  | NotFound = 404
+  | Conflict = 409
+  | InternalServerError = 500
 
-  let private (|InsertRequest|_|) (request: HttpRequest) =
-    match request.Path.Value with
-    | Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName ] ->
-        match request.Method with
-        | "POST" ->
-            let jObject = JObject.Parse request.BodyString
-            match jObject.TryGetValue "PartitionKey" with
-            | true, p ->
-                match jObject.TryGetValue "RowKey" with
-                | true, r -> Some(tableName, string p, string r, jObject)
-                | _ -> None
-            | _ -> None
-        | _ -> None
-    | _ -> None
+module StatusCode =
+  let toRaw (statusCode: StatusCode) =
+    match statusCode with
+    | StatusCode.Ok -> "HTTP/1.1 200 Ok"
+    | StatusCode.NoContent -> "HTTP/1.1 204 No Content"
+    | StatusCode.Accepted -> "HTTP/1.1 202 Accepted"
+    | StatusCode.BadRequest -> "HTTP/1.1 400 Bad Request"
+    | StatusCode.NotFound -> "HTTP/1.1 404 Not Found"
+    | StatusCode.Conflict -> "HTTP/1.1 409 Conflict"
+    | StatusCode.InternalServerError -> "HTTP/1.1 500 Internal Server Error"
+    | x -> failwithf "Unknown status code %A" x
 
-  let private (|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|) (request: HttpRequest) =
-    match request.Path.Value with
-    | Regex "^\/devstoreaccount1\/(\w+)\(PartitionKey='(.+)',RowKey='(.+)'\)$" [ tableName; p; r ] ->
-        match request.Method with
-        | "POST" ->
-            let jObject = JObject.Parse request.BodyString
-            InsertOrMergeRequest(tableName, p, r, jObject)
-        | "PUT" ->
-            let jObject = JObject.Parse request.BodyString
-            InsertOrReplaceRequest(tableName, p, r, jObject)
-        | "GET" -> GetRequest(tableName, p, r)
-        | "DELETE" -> DeleteRequest(tableName, p, r)
-        | _ -> NotFoundRequest
-    | _ -> NotFoundRequest
+[<RequireQualifiedAccess>]
+type Response =
+  { StatusCode: StatusCode
+    Headers: IDictionary<string, string>
+    Body: string }
 
-  let toCommand =
-    function
-    | CreateTableRequest name -> CreateTable name |> Table |> Some
-    | InsertOrMergeRequest (table, partitionKey, rowKey, fields) ->
-        InsertOrMerge
-          (table,
-           { Keys =
-               { PartitionKey = partitionKey
-                 RowKey = rowKey }
-             Fields = (fields |> TableFields.fromJObject) })
-        |> Write
-        |> Some
-    | InsertOrReplaceRequest (table, partitionKey, rowKey, fields) ->
-        InsertOrReplace
-          (table,
-           { Keys =
-               { PartitionKey = partitionKey
-                 RowKey = rowKey }
-             Fields = (fields |> TableFields.fromJObject) })
-        |> Write
-        |> Some
-    | InsertRequest (table, partitionKey, rowKey, fields) ->
-        Insert
-          (table,
-           { Keys =
-               { PartitionKey = partitionKey
-                 RowKey = rowKey }
-             Fields = (fields |> TableFields.fromJObject) })
-        |> Write
-        |> Some
-    | DeleteRequest (table, partitionKey, rowKey) ->
-        Delete
-          (table,
-           { PartitionKey = partitionKey
-             RowKey = rowKey })
-        |> Write
-        |> Some
-    | GetRequest (table, partitionKey, rowKey) ->
-        Get
-          (table,
-           { PartitionKey = partitionKey
-             RowKey = rowKey })
-        |> Read
-        |> Some
-    | QueryRequest request -> Query request |> Read |> Some
-    | _ -> None
+module Response =
+  let toRaw (response: Response) =
+    let rawStatusCode = response.StatusCode |> StatusCode.toRaw
 
-let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) =
-  task {
-    try
-      do! inner ctx
-    with ex -> printfn "Ouch %A" ex
-  } :> Task
+    let headers =
+      response.Headers
+      |> Seq.map (fun kvp -> sprintf "%s: %s" kvp.Key kvp.Value)
+      |> fun h -> String.Join("\n", h)
 
-let httpHandler commandHandler (ctx: HttpContext) =
-  task {
-    match ctx.Request |> Request.toCommand with
-    | Some command ->
-        let response = commandHandler command
-        match response with
-        | Ack -> ctx.Response.StatusCode <- 204
-        | Conflict _ -> ctx.Response.StatusCode <- 409
-        | GetResponse response ->
-            ctx.Response.StatusCode <- 200
-            ctx.Response.ContentType <- "application/json; charset=utf-8"
-            let jObject = response |> TableRow.toJObject
-            let json = jObject.ToString()
-            do! json |> ctx.Response.WriteAsync
-        | QueryResponse results ->
-            ctx.Response.StatusCode <- 200
-            ctx.Response.ContentType <- "application/json; charset=utf-8"
+    let sb = StringBuilder()
+    sb.Append rawStatusCode |> ignore
+    sb.AppendLine() |> ignore
+    sb.Append headers |> ignore
+    sb.AppendLine() |> ignore
+    if response.Body <> null then sb.Append response.Body |> ignore
+    let raw = sb.ToString()
+    raw
 
-            let rows =
-              results |> List.map (TableRow.toJObject) |> JArray
+let toMethod m =
+  Enum.Parse(typeof<Method>, m, true) :?> Method
 
-            let response = JObject([ JProperty("value", rows) ])
-            let json = (response.ToString())
-            do! json |> ctx.Response.WriteAsync
-        | NotFound -> ctx.Response.StatusCode <- 404
-    | None -> ctx.Response.StatusCode <- 400
-  } :> Task
+let toRequest (request: HttpRequest): Request =
+  let request: Request =
+    { Method = request.Method |> toMethod
+      Path = request.Path.Value
+      Body = request.BodyString
+      Headers =
+        request.Headers
+        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
+        |> dict
+      Query =
+        request.Query
+        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
+        |> dict
+      Uri = request.GetDisplayUrl() |> Uri }
+
+  request

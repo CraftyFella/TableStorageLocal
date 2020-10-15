@@ -5,7 +5,7 @@ open Microsoft.AspNetCore.Hosting
 open System.Net.Sockets
 open System.Net
 open Microsoft.AspNetCore.Builder
-open Http
+open HttpContext
 open CommandHandler
 open LiteDB
 
@@ -34,7 +34,7 @@ type FakeTables(?connectionString) =
   let port = findPort ()
   let url = sprintf "http://127.0.0.1:%i" port
 
-  let connectionString =
+  let mutable connectionString =
     sprintf
       "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://localhost:%i/devstoreaccount1;"
       port
@@ -43,7 +43,12 @@ type FakeTables(?connectionString) =
     WebHostBuilder().Configure(fun appBuilder -> app db appBuilder).UseUrls(url)
       .UseKestrel(fun options -> options.AllowSynchronousIO <- true).Build()
 
-  do webHost.Start()
+  do
+    if Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
+       <> null then
+      connectionString <- Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
+    else
+      webHost.Start()
 
   member __.ConnectionString = connectionString
 
