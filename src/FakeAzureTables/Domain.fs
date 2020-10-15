@@ -61,7 +61,7 @@ type ReadCommand =
   | Query of Table: string * Filter: string
 
 type BatchCommand = {
-  
+
   Commands : WriteCommand list
 }
 
@@ -73,6 +73,7 @@ type Command =
 
 type ConflictReason =
   | TableAlreadyExists
+  | InvalidTableName
   | KeyAlreadyExists
 
 type CommandResult =
