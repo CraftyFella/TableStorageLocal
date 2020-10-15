@@ -118,7 +118,7 @@ module private Request =
     | QueryRequest request -> Query request |> Read |> Some
     | _ -> None
 
-let exceptonLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) =
+let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) =
   task {
     try
       do! inner ctx
