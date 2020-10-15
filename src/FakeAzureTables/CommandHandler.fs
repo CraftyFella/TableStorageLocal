@@ -103,7 +103,7 @@ let commandHandler (db: ILiteDatabase) command =
           Ack
       | InsertOrReplace (table, row) ->
           let table = db.GetTable table
-          table.TryInsert row |> ignore
+          table.Upsert row |> ignore
           Ack
       | Insert (table, row) ->
           let table = db.GetTable table
