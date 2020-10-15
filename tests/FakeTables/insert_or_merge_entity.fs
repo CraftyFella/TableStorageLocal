@@ -44,6 +44,30 @@ let insertOrMergeTests =
         Expect.equal result.["StringField"] (fields.["StringField"]) ""
       }
 
+      test "merge single property" {
+        let table = createFakeTables ()
+
+        let fields = allFieldTypes ()
+
+        DynamicTableEntity("pk2", "r2k", "*", fields)
+        |> TableOperation.Insert
+        |> table.Execute
+        |> ignore
+
+        let actual =
+          createEntityWithString "pk2" "rk2" "updated"
+          |> TableOperation.InsertOrMerge
+          |> table.Execute
+
+        let result =
+          TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")
+          |> table.Execute
+          |> fun r -> r.Result |> unbox<DynamicTableEntity>
+
+        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+        Expect.equal result.["StringField"] (fields.["StringField"]) ""
+      }
+
       test "inserted row is retrievable" {
         let table = createFakeTables ()
         let fields = allFieldTypes ()
