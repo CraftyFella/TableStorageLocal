@@ -6,6 +6,7 @@ open FSharp.Control.Tasks
 open System.Threading.Tasks
 open System.Text.RegularExpressions
 open Domain
+open Microsoft.Extensions.Primitives
 
 module private Request =
   open Http
@@ -42,7 +43,7 @@ module private Request =
     match request.Path with
     | Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName ] ->
         match request.Method with
-        | Method.POST ->
+        | Method.Post ->
             let jObject = JObject.Parse request.Body
             match jObject.TryGetValue "PartitionKey" with
             | true, p ->
@@ -57,14 +58,14 @@ module private Request =
     match request.Path with
     | Regex "^\/devstoreaccount1\/(\w+)\(PartitionKey='(.+)',RowKey='(.+)'\)$" [ tableName; p; r ] ->
         match request.Method with
-        | Method.POST ->
+        | Method.Post ->
             let jObject = JObject.Parse request.Body
             InsertOrMergeRequest(tableName, p, r, jObject)
-        | Method.PUT ->
+        | Method.Put ->
             let jObject = JObject.Parse request.Body
             InsertOrReplaceRequest(tableName, p, r, jObject)
-        | Method.GET -> GetRequest(tableName, p, r)
-        | Method.DELETE -> DeleteRequest(tableName, p, r)
+        | Method.Get -> GetRequest(tableName, p, r)
+        | Method.Delete -> DeleteRequest(tableName, p, r)
         | _ -> NotFoundRequest
     | _ -> NotFoundRequest
 
@@ -198,34 +199,41 @@ let httpHandler commandHandler (ctx: HttpContext) =
         let commandResult = commandHandler command
         match commandResult with
         | TableResponse tableResponse ->
-          match tableResponse with
-          | TableCommandResponse.Ack -> ctx.Response.StatusCode <- 204
-          | TableCommandResponse.Conflict _ -> ctx.Response.StatusCode <- 409
+            match tableResponse with
+            | TableCommandResponse.Ack -> ctx.Response.StatusCode <- 204
+            | TableCommandResponse.Conflict _ -> ctx.Response.StatusCode <- 409
         | WriteResponse writeResponse ->
-          match writeResponse with
-          | Ack -> ctx.Response.StatusCode <- 204
-          | Conflict _ -> ctx.Response.StatusCode <- 409
+            match writeResponse with
+            | Ack -> ctx.Response.StatusCode <- 204
+            | Conflict _ -> ctx.Response.StatusCode <- 409
         | ReadResponse readResponse ->
-          match readResponse with
-          | GetResponse response ->
-            ctx.Response.StatusCode <- 200
-            ctx.Response.ContentType <- "application/json; charset=utf-8"
-            let jObject = response |> TableRow.toJObject
-            let json = jObject.ToString()
-            do! json |> ctx.Response.WriteAsync
-          | QueryResponse results ->
-              ctx.Response.StatusCode <- 200
-              ctx.Response.ContentType <- "application/json; charset=utf-8"
+            match readResponse with
+            | GetResponse response ->
+                ctx.Response.StatusCode <- 200
+                ctx.Response.ContentType <- "application/json; charset=utf-8"
+                let jObject = response |> TableRow.toJObject
+                let json = jObject.ToString()
+                do! json |> ctx.Response.WriteAsync
+            | QueryResponse results ->
+                ctx.Response.StatusCode <- 200
+                ctx.Response.ContentType <- "application/json; charset=utf-8"
 
-              let rows =
-                results |> List.map (TableRow.toJObject) |> JArray
+                let rows =
+                  results |> List.map (TableRow.toJObject) |> JArray
 
-              let response = JObject([ JProperty("value", rows) ])
-              let json = (response.ToString())
-              do! json |> ctx.Response.WriteAsync
-          | ReadCommandResponse.NotFoundResponse ->
-              ctx.Response.StatusCode <- 404
-        | BatchResponse commandResults -> ctx.Response.StatusCode <- 202
-        | NotFoundResponse -> ctx.Response.StatusCode <- 404
+                let response = JObject([ JProperty("value", rows) ])
+                let json = (response.ToString())
+                do! json |> ctx.Response.WriteAsync
+            | ReadCommandResponse.NotFoundResponse -> ctx.Response.StatusCode <- 404
+        | BatchResponse commandResults ->
+            let response = BatchHttp.toHttpResponse commandResults
+            ctx.Response.StatusCode <- int response.StatusCode
+            response.Headers
+            |> Seq.iter (fun kvp -> ctx.Response.Headers.Add(kvp.Key, StringValues(kvp.Value)))
+            do! ctx.Response.WriteAsync response.Body
+        | NotFoundResponse ->
+            let r = ctx.Response
+
+            ctx.Response.StatusCode <- 404
     | None -> ctx.Response.StatusCode <- 400
   } :> Task

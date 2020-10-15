@@ -101,7 +101,35 @@ ETag: W/"datetime'2020-10-09T17%3A00%3A02.492365Z'"
 *)
 
 
-[<PTests>]
+(*
+
+HTTP/1.1 202 Accepted
+Date: Thu, 15 Oct 2020 11:48:38 GMT
+Content-Type: multipart/mixed; boundary=batchresponse_966bc9886b34472a9764a3915bd603d8
+Server: Kestrel
+Transfer-Encoding: chunked
+Connection: keep-alive
+
+
+--batchresponse_966bc9886b34472a9764a3915bd603d8
+Content-Type: multipart/mixed; boundary=changesetresponse_998d15c5a31c44d088a885c8ce3c9bee
+--changesetresponse_998d15c5a31c44d088a885c8ce3c9bee
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+HTTP/1.1 202 Accepted
+
+--changesetresponse_998d15c5a31c44d088a885c8ce3c9bee
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+HTTP/1.1 202 Accepted
+
+--changesetresponse_998d15c5a31c44d088a885c8ce3c9bee--
+--batchresponse_966bc9886b34472a9764a3915bd603d8--
+
+
+*)
+
+[<Tests>]
 let batchTests =
   testList
     "batch insert"

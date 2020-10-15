@@ -180,12 +180,16 @@ let commandHandler (db: ILiteDatabase) command =
   | Batch batch ->
       match db.BeginTrans() with
       | true ->
-          let commandResults =
-            batch.Commands |> List.map writeCommandHandler
+          try
+            let commandResults =
+              batch.Commands |> List.map writeCommandHandler
 
-          match db.Commit() with
-          | true ->
-              { CommandResponses = commandResults }
-              |> BatchResponse
-          | false -> failwithf "Failed to commit a transaction"
+            match db.Commit() with
+            | true ->
+                { CommandResponses = commandResults }
+                |> BatchResponse
+            | false -> failwithf "Failed to commit a transaction"
+          with ex ->
+            db.Rollback() |> ignore
+            reraise ()
       | false -> failwithf "Failed to create a transaction"
