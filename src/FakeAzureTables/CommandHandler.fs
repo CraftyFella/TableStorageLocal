@@ -128,11 +128,14 @@ let readCommandHandler (db: ILiteDatabase) command =
       let table = db.GetTable table
 
       let matchingRows =
-        match parse filter with
-        | Ok result -> applyFilter table result
-        | Error error ->
-            printfn "Filter: %A;\nError: %A" filter error
-            Seq.empty
+        match filter with
+        | None -> applyFilter table Filter.All
+        | Some filter ->
+          match parse filter with
+          | Ok filter -> applyFilter table filter
+          | Error error ->
+              printfn "Filter: %A;\nError: %A" filter error
+              Seq.empty
 
       matchingRows |> Seq.toList |> QueryResponse
 

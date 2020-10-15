@@ -30,6 +30,7 @@ type TableOperators =
 
 [<RequireQualifiedAccess>]
 type Filter =
+  | All
   | PartitionKey of QueryComparison * string
   | RowKey of QueryComparison * string
   | Property of name: string * QueryComparison * FieldValue
@@ -59,7 +60,7 @@ type WriteCommand =
 
 type ReadCommand =
   | Get of Table: string * TableKeys
-  | Query of Table: string * Filter: string
+  | Query of Table: string * Filter: string option
 
 type BatchCommand =
   { Commands: WriteCommand list }

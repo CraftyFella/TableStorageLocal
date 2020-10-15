@@ -48,6 +48,42 @@ let searchTests =
 
       }
 
+      test "all rows" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "rk1"
+          createEntity "pk1" "rk2"
+          createEntity "pk2" "rk3"
+          createEntity "pk1" "rk4"
+          createEntity "pk1" "rk5" ]
+        |> List.iter insert
+
+        let query = TableQuery<DynamicTableEntity>()
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        let rowKeys =
+          results
+          |> Seq.map (fun r -> r.RowKey)
+          |> Seq.sort
+          |> Seq.toList
+
+        Expect.equal rowKeys [ "rk1"; "rk2"; "rk3"; "rk4"; "rk5" ] "unexpected row Keys"
+
+        for result in results do
+          for field in allFieldTypes () do
+            Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
+      }
+
       test "all with matching row key" {
         let table = createFakeTables ()
 

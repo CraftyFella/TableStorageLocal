@@ -25,8 +25,8 @@ module private Request =
     match request.Path with
     | Regex "^\/devstoreaccount1\/(\w+)$" [ tableName ] ->
         match request.Query.ContainsKey("$filter") with
-        | true -> Some(tableName, request.Query.Item "$filter" |> Array.head)
-        | false -> None
+        | true -> Some(tableName, request.Query.Item "$filter" |> Array.tryHead)
+        | false -> Some(tableName, None)
     | _ -> None
 
   let private (|CreateTableRequest|_|) (request: Request) =

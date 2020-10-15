@@ -26,6 +26,10 @@ let rec applyFilter (col: ILiteCollection<TableRow>) filter =
         match tableOperator with
         | TableOperators.And -> Query.And(leftExpression, rightExpression)
         | TableOperators.Or -> Query.Or(leftExpression, rightExpression)
+    | Filter.All -> null
 
-  let expression = filterExpressionBuilder filter
-  col.Find expression
+  match filter with
+  | Filter.All -> col.FindAll()
+  | _ ->
+      let expression = filterExpressionBuilder filter
+      col.Find expression
