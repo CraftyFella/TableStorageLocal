@@ -5,9 +5,9 @@ open FilterApplier
 open Domain
 open LiteDB
 open Bson
-open System.Text.RegularExpressions
 open System
 open System.Collections.Generic
+open System.Text.RegularExpressions
 
 let randomString =
   let chars =
@@ -72,81 +72,48 @@ let tableNameIsValid tableName =
 
 let tableCommandHandler (db: ILiteDatabase) command =
   match command with
-  | Table command ->
-      match command with
-      | CreateTable table ->
-          match db.TableExists table, tableNameIsValid table with
-          | true, _ -> Conflict TableAlreadyExists
-          | _, false -> Conflict InvalidTableName
-          | _ ->
-              db.GetTable table |> ignore
-              Ack
-  | Write command ->
-      match command with
-      | InsertOrMerge (table, newRow) ->
-          let table = db.GetTable table
-
-          let row =
-            match newRow.Keys
-                  |> TableKeys.toBsonExpression
-                  |> table.TryFindOne with
-            | Some existingRow ->
-                let mergedRow = { newRow with Fields = Dictionary() }
-                for (KeyValue (name, existingValue)) in existingRow.Fields do
-                  match newRow.Fields.TryGetValue name with
-                  | true, newValue -> mergedRow.Fields.Add(name, newValue)
-                  | _ -> mergedRow.Fields.Add(name, existingValue)
-                mergedRow
-            | _ -> newRow
-
-          table.Upsert row |> ignore
-          Ack
-      | InsertOrReplace (table, row) ->
-          let table = db.GetTable table
-          table.Upsert row |> ignore
-          Ack
-      | Insert (table, row) ->
-          let table = db.GetTable table
-          match table.TryInsert row with
-          | true -> Ack
-          | false -> Conflict KeyAlreadyExists
-      | Delete (table, keys) ->
-          let table = db.GetTable table
-          table.DeleteMany(keys |> TableKeys.toBsonExpression)
-          |> ignore
-          Ack
-  | Read command ->
-      match command with
-      | Get (table, keys) ->
-          let table = db.GetTable table
-          match keys
-                |> TableKeys.toBsonExpression
-                |> table.TryFindOne with
-          | Some row -> GetResponse row
-          | _ -> NotFound
-      | Query (table, filter) ->
-          let table = db.GetTable table
+  | CreateTable table ->
+      match db.TableExists table, tableNameIsValid table with
+      | true, _ -> TableCommandResponse.Conflict TableAlreadyExists
+      | _, false -> TableCommandResponse.Conflict InvalidTableName
+      | _ ->
+          db.GetTable table |> ignore
+          TableCommandResponse.Ack
 
 let writeCommandHandler (db: ILiteDatabase) command =
   match command with
-  | InsertOrMerge (table, row) ->
+  | InsertOrMerge (table, newRow) ->
       let table = db.GetTable table
-      table.TryInsert row |> ignore
-      Ack(row.Keys, System.DateTimeOffset.UtcNow)
+
+      let row =
+        match newRow.Keys
+              |> TableKeys.toBsonExpression
+              |> table.TryFindOne with
+        | Some existingRow ->
+            let mergedRow = { newRow with Fields = Dictionary() }
+            for (KeyValue (name, existingValue)) in existingRow.Fields do
+              match newRow.Fields.TryGetValue name with
+              | true, newValue -> mergedRow.Fields.Add(name, newValue)
+              | _ -> mergedRow.Fields.Add(name, existingValue)
+            mergedRow
+        | _ -> newRow
+
+      table.Upsert row |> ignore
+      WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
   | InsertOrReplace (table, row) ->
       let table = db.GetTable table
-      table.TryInsert row |> ignore
-      Ack(row.Keys, System.DateTimeOffset.UtcNow)
+      table.Upsert row |> ignore
+      WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
   | Insert (table, row) ->
       let table = db.GetTable table
       match table.TryInsert row with
-      | true -> Ack(row.Keys, System.DateTimeOffset.UtcNow)
-      | false -> Conflict KeyAlreadyExists
+      | true -> WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
+      | false -> WriteCommandResponse.Conflict KeyAlreadyExists
   | Delete (table, keys) ->
       let table = db.GetTable table
       table.DeleteMany(keys |> TableKeys.toBsonExpression)
       |> ignore
-      Ack(keys, System.DateTimeOffset.UtcNow)
+      WriteCommandResponse.Ack(keys, System.DateTimeOffset.UtcNow)
 
 let readCommandHandler (db: ILiteDatabase) command =
   match command with

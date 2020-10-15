@@ -65,7 +65,6 @@ type private ParserCallbacks() =
 
 let parse (input: string) =
   try
-    File.WriteAllText("example.http", input.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n").Trim())
 
     let requestRaw =
       Encoding.UTF8.GetBytes(input.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n").Trim())

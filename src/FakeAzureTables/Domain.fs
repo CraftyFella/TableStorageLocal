@@ -72,6 +72,7 @@ type Command =
 
 type TableConflictReason =
   | TableAlreadyExists
+  | InvalidTableName
 
 type WriteConflictReason =
   | KeyAlreadyExists

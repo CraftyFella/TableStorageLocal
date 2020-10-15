@@ -115,7 +115,7 @@ module private Request =
 
             let httpRequests =
               rawRequests
-              |> Array.map (Parser.parse)
+              |> Array.map (HttpRequest.parse)
               |> List.ofArray
 
             match httpRequests |> List.forall Result.isOk with
