@@ -36,7 +36,12 @@ type FakeTables(?connectionString) =
 
   let mutable connectionString =
     sprintf
-      "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://localhost:%i/devstoreaccount1;"
+      "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://%s:%i/devstoreaccount1;"
+      (if Environment.GetEnvironmentVariable("FAKEAZURETABLES_USEPROXY")
+          <> null then
+        "localhost.charlesproxy.com"
+       else
+         "localhost")
       port
 
   let webHost =
