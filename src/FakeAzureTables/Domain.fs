@@ -70,17 +70,31 @@ type Command =
   | Table of TableCommand
   | Batch of BatchCommand
 
-type ConflictReason =
+type TableConflictReason =
   | TableAlreadyExists
-  | InvalidTableName
-  | KeyAlreadyExists
 
-type CommandResult =
+type WriteConflictReason =
+  | KeyAlreadyExists
+type TableCommandResponse =
   | Ack
-  | Conflict of ConflictReason
+  | Conflict of TableConflictReason
+type WriteCommandResponse =
+  | Ack
+  | Conflict of WriteConflictReason
+
+type ReadCommandResponse =
   | GetResponse of TableRow
   | QueryResponse of TableRow list
-  | NotFound
+  | NotFoundResponse
+
+type BatchCommandResponse = { CommandResponses: WriteCommandResponse list }
+
+type CommandResult =
+  | TableResponse of TableCommandResponse
+  | WriteResponse of WriteCommandResponse
+  | ReadResponse of ReadCommandResponse
+  | BatchResponse of BatchCommandResponse
+  | NotFoundResponse
 
 module TableFields =
   open Newtonsoft.Json.Linq

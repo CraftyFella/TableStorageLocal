@@ -6,6 +6,6 @@ open Expecto
 let main args =
   let config =
     { defaultConfig with
-        verbosity = Logging.Debug }
+        verbosity = Logging.Info }
 
   runTestsInAssembly config args

@@ -1,4 +1,5 @@
 module Http
+
 open Microsoft.AspNetCore.Http
 open System.IO
 open System.Collections.Generic
@@ -38,21 +39,23 @@ let toMethod m =
   Enum.Parse(typeof<Method>, m, true) :?> Method
 
 let toRequest (request: HttpRequest): Request =
-  { Method = request.Method |> toMethod
-    Path = request.Path.Value
-    Body = request.BodyString
-    Headers =
-      request.Headers
-      |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
-      |> dict
-    Query =
-      request.Query
-      |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
-      |> dict
-    Uri = request.GetDisplayUrl() |> Uri }
+  let request: Request =
+    { Method = request.Method |> toMethod
+      Path = request.Path.Value
+      Body = request.BodyString
+      Headers =
+        request.Headers
+        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
+        |> dict
+      Query =
+        request.Query
+        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
+        |> dict
+      Uri = request.GetDisplayUrl() |> Uri }
+  request
 
 [<RequireQualifiedAccess>]
-module private Parser =
+module Parser =
   open System.Buffers
   open System.Text
   open Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
@@ -134,7 +137,9 @@ module private Parser =
 
       let body =
         Encoding.UTF8.GetString(buffer.ToArray())
+
       let uri = Uri(app.Uri, UriKind.RelativeOrAbsolute)
+
       let request: Request =
         { Method = app.Method
           Path = uri.AbsolutePath

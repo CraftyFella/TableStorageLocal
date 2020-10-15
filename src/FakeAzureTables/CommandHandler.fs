@@ -156,14 +156,14 @@ let readCommandHandler (db: ILiteDatabase) command =
             |> TableKeys.toBsonExpression
             |> table.TryFindOne with
       | Some row -> GetResponse(row)
-      | _ -> NotFound
+      | _ -> ReadCommandResponse.NotFoundResponse
   | Query (table, filter) ->
       let table = db.GetTable table
 
       let matchingRows =
         match parse filter with
-        | Result.Ok result -> applyFilter table result
-        | Result.Error error ->
+        | Ok result -> applyFilter table result
+        | Error error ->
             printfn "Filter: %A;\nError: %A" filter error
             Seq.empty
 
@@ -174,16 +174,18 @@ let commandHandler (db: ILiteDatabase) command =
   let writeCommandHandler = writeCommandHandler db
   let readCommandHandler = readCommandHandler db
   match command with
-  | Table command -> tableCommandHandler command
-  | Write command -> writeCommandHandler command
-  | Read command -> readCommandHandler command
+  | Table command -> command |> tableCommandHandler |> TableResponse
+  | Write command -> command |> writeCommandHandler |> WriteResponse
+  | Read command -> command |> readCommandHandler |> ReadResponse
   | Batch batch ->
       match db.BeginTrans() with
       | true ->
-          let results =
-            batch.Commands |> Seq.map writeCommandHandler
+          let commandResults =
+            batch.Commands |> List.map writeCommandHandler
 
           match db.Commit() with
-          | true -> NotFound
+          | true ->
+              { CommandResponses = commandResults }
+              |> BatchResponse
           | false -> failwithf "Failed to commit a transaction"
       | false -> failwithf "Failed to create a transaction"

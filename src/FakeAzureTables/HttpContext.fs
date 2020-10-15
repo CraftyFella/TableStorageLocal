@@ -7,9 +7,9 @@ open System.Threading.Tasks
 open System.Text.RegularExpressions
 open Domain
 
-
 module private Request =
   open Http
+
   let (|Regex|_|) pattern input =
     match Regex.Match(input, pattern) with
     | m when m.Success ->
@@ -68,7 +68,62 @@ module private Request =
         | _ -> NotFoundRequest
     | _ -> NotFoundRequest
 
-  let toCommand =
+  module Result =
+    let isOk result =
+      match result with
+      | Ok _ -> true
+      | _ -> false
+
+    let valueOf result =
+      match result with
+      | Ok v -> v
+      | _ -> failwithf "shouldn't get here"
+
+  module Option =
+
+    let valueOf result =
+      match result with
+      | Some v -> v
+      | _ -> failwithf "shouldn't get here"
+
+  module WriteCommand =
+
+    let isWriteCommand command =
+      match command with
+      | Write c -> true
+      | _ -> false
+
+    let valueOf command =
+      match command with
+      | Write c -> c
+      | _ -> failwithf "shouldn't get here"
+
+  let private (|BatchRequest|_|) (request: Request) =
+    match request.Path with
+    | "/devstoreaccount1/$batch" ->
+        match (request.Headers.Item "Content-Type")
+              |> Array.head with
+        | Regex "boundary=(.+)$" [ boundary ] ->
+            let rawRequests =
+              Regex.Split(request.Body, "--changeset_.+$", RegexOptions.Multiline)
+              |> Array.filter (fun x -> not (x.Contains boundary))
+              |> Array.map (fun x ->
+                   Regex.Split(x, "^Content-Transfer-Encoding: binary", RegexOptions.Multiline)
+                   |> Array.skip 1
+                   |> Array.head)
+
+            let httpRequests =
+              rawRequests
+              |> Array.map (Parser.parse)
+              |> List.ofArray
+
+            match httpRequests |> List.forall Result.isOk with
+            | true -> httpRequests |> List.map Result.valueOf |> Some
+            | false -> None
+        | _ -> None
+    | _ -> None
+
+  let rec toCommand =
     function
     | CreateTableRequest name -> CreateTable name |> Table |> Some
     | InsertOrMergeRequest (table, partitionKey, rowKey, fields) ->
@@ -113,7 +168,21 @@ module private Request =
         |> Read
         |> Some
     | QueryRequest request -> Query request |> Read |> Some
-    | _ -> None
+    | BatchRequest requests ->
+        let commands = requests |> List.map (toCommand)
+        match commands |> List.forall (Option.isSome) with
+        | true ->
+            { BatchCommand.Commands =
+                commands
+                |> List.map (Option.valueOf)
+                |> List.map (WriteCommand.valueOf) }
+            |> Batch
+            |> Some
+        | _ -> None
+
+    | request ->
+        printfn "Unknown request %A" request
+        None
 
 let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) =
   task {
@@ -126,26 +195,37 @@ let httpHandler commandHandler (ctx: HttpContext) =
   task {
     match ctx.Request |> Http.toRequest |> Request.toCommand with
     | Some command ->
-        let response = commandHandler command
-        match response with
-        | Ack -> ctx.Response.StatusCode <- 204
-        | Conflict _ -> ctx.Response.StatusCode <- 409
-        | GetResponse response ->
+        let commandResult = commandHandler command
+        match commandResult with
+        | TableResponse tableResponse ->
+          match tableResponse with
+          | TableCommandResponse.Ack -> ctx.Response.StatusCode <- 204
+          | TableCommandResponse.Conflict _ -> ctx.Response.StatusCode <- 409
+        | WriteResponse writeResponse ->
+          match writeResponse with
+          | Ack -> ctx.Response.StatusCode <- 204
+          | Conflict _ -> ctx.Response.StatusCode <- 409
+        | ReadResponse readResponse ->
+          match readResponse with
+          | GetResponse response ->
             ctx.Response.StatusCode <- 200
             ctx.Response.ContentType <- "application/json; charset=utf-8"
             let jObject = response |> TableRow.toJObject
             let json = jObject.ToString()
             do! json |> ctx.Response.WriteAsync
-        | QueryResponse results ->
-            ctx.Response.StatusCode <- 200
-            ctx.Response.ContentType <- "application/json; charset=utf-8"
+          | QueryResponse results ->
+              ctx.Response.StatusCode <- 200
+              ctx.Response.ContentType <- "application/json; charset=utf-8"
 
-            let rows =
-              results |> List.map (TableRow.toJObject) |> JArray
+              let rows =
+                results |> List.map (TableRow.toJObject) |> JArray
 
-            let response = JObject([ JProperty("value", rows) ])
-            let json = (response.ToString())
-            do! json |> ctx.Response.WriteAsync
-        | NotFound -> ctx.Response.StatusCode <- 404
+              let response = JObject([ JProperty("value", rows) ])
+              let json = (response.ToString())
+              do! json |> ctx.Response.WriteAsync
+          | ReadCommandResponse.NotFoundResponse ->
+              ctx.Response.StatusCode <- 404
+        | BatchResponse commandResults -> ctx.Response.StatusCode <- 202
+        | NotFoundResponse -> ctx.Response.StatusCode <- 404
     | None -> ctx.Response.StatusCode <- 400
   } :> Task

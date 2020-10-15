@@ -106,11 +106,7 @@ let batchTests =
   testList
     "batch insert"
     [ ftest "row doesn't exist is accepted" {
-        // let table = createFakeTables ()
-        let client = CloudStorageAccount.Parse("DefaultEndpointsProtocol=https;AccountName=podlocaltests;AccountKey=htIuyS8wgwSa0x9DgQQQA0PKGpzF/ap8tqQrgg2NTWEMTp4d4WU0GTQ7Ar4BXr3ilHsnrd78Y+rykUOKPEJKNQ==;EndpointSuffix=core.windows.net").CreateCloudTableClient()
-        let table = client.GetTableReference "dsadasdas"
-        table.CreateIfNotExists() |> ignore
-
+        let table = createFakeTables ()
         let batch = TableBatchOperation()
 
         createEntityWithString "pk2" "1" "thing"
