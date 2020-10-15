@@ -6,7 +6,6 @@ open Domain
 open LiteDB
 open Bson
 open System.Text.RegularExpressions
-open System.Collections.Concurrent
 open System
 open System.Collections.Generic
 
@@ -27,7 +26,9 @@ let randomString =
 type ILiteDatabase with
 
   member __.TablesCollection =
-    let col = __.GetCollection<KeyValuePair<string, string>> "_tables"
+    let col =
+      __.GetCollection<KeyValuePair<string, string>> "_tables"
+
     col.EnsureIndex(fun kvp -> kvp.Key) |> ignore
     col
 
@@ -51,16 +52,18 @@ type ILiteDatabase with
     let col =
       __.GetCollection<TableRow> collectionName
 
-    col.EnsureIndex("PK_RK_UNIQUE", BsonExpression.Create "LOWER($.Keys.PartitionKey + $.Keys.RowKey)", true)
+    col.EnsureIndex(fun tableRow -> tableRow.Id)
     |> ignore
     col
 
 type ILiteCollection<'T> with
   member __.TryInsert(row: 'T) =
     try
-      __.Insert(row) |> ignore
+      __.Insert row |> ignore
       true
-    with ex -> if ex.Message.Contains "PK_RK_UNIQUE" then false else reraise ()
+    with
+    | :? LiteException as ex when ex.ErrorCode = LiteException.INDEX_DUPLICATE_KEY -> false
+    | _ -> reraise ()
 
   member __.TryFindOne(predicate: BsonExpression) = __.Find predicate |> Seq.tryHead
 
@@ -80,9 +83,23 @@ let commandHandler (db: ILiteDatabase) command =
               Ack
   | Write command ->
       match command with
-      | InsertOrMerge (table, row) ->
+      | InsertOrMerge (table, newRow) ->
           let table = db.GetTable table
-          table.TryInsert row |> ignore
+
+          let row =
+            match newRow.Keys
+                  |> TableKeys.toBsonExpression
+                  |> table.TryFindOne with
+            | Some existingRow ->
+                let mergedRow = { newRow with Fields = Dictionary() }
+                for (KeyValue (name, existingValue)) in existingRow.Fields do
+                  match newRow.Fields.TryGetValue name with
+                  | true, newValue -> mergedRow.Fields.Add(name, newValue)
+                  | _ -> mergedRow.Fields.Add(name, existingValue)
+                mergedRow
+            | _ -> newRow
+
+          table.Upsert row |> ignore
           Ack
       | InsertOrReplace (table, row) ->
           let table = db.GetTable table
@@ -105,7 +122,7 @@ let commandHandler (db: ILiteDatabase) command =
           match keys
                 |> TableKeys.toBsonExpression
                 |> table.TryFindOne with
-          | Some row -> GetResponse(row)
+          | Some row -> GetResponse row
           | _ -> NotFound
       | Query (table, filter) ->
           let table = db.GetTable table

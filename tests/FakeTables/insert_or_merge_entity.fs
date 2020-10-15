@@ -1,8 +1,6 @@
 module insert_or_merge_entity
 
 open Expecto
-open System
-open Host
 open Microsoft.Azure.Cosmos.Table
 
 [<Tests>]
@@ -19,23 +17,33 @@ let insertOrMergeTests =
 
         Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
       }
+
       test "row exists is accepted" {
         let table = createFakeTables ()
 
-        DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
+        let fields = allFieldTypes ()
+
+        DynamicTableEntity("pk2", "r2k", "*", fields)
         |> TableOperation.Insert
         |> table.Execute
         |> ignore
 
+        fields.["StringField"] <- EntityProperty.GeneratePropertyForString "updated"
 
         let actual =
-          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
+          DynamicTableEntity("pk2", "r2k", "*", fields)
           |> TableOperation.InsertOrMerge
           |> table.Execute
 
-        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+        let result =
+          TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")
+          |> table.Execute
+          |> fun r -> r.Result |> unbox<DynamicTableEntity>
 
+        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+        Expect.equal result.["StringField"] (fields.["StringField"]) ""
       }
+
       test "inserted row is retrievable" {
         let table = createFakeTables ()
         let fields = allFieldTypes ()

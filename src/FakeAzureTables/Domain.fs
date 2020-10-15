@@ -46,9 +46,9 @@ type TableKeys =
 type TableRow =
   { Keys: TableKeys
     Fields: TableFields }
+  member __.Id = (__.Keys.PartitionKey + __.Keys.RowKey).ToLower()
 
-type TableCommand =
-  | CreateTable of Table: string
+type TableCommand = CreateTable of Table: string
 
 type WriteCommand =
   | Insert of Table: string * TableRow
@@ -60,10 +60,10 @@ type ReadCommand =
   | Get of Table: string * TableKeys
   | Query of Table: string * Filter: string
 
-type BatchCommand = {
+type BatchCommand =
+  {
 
-  Commands : WriteCommand list
-}
+    Commands: WriteCommand list }
 
 type Command =
   | Write of WriteCommand
@@ -116,7 +116,7 @@ module TableFields =
 
     fields
 
-  let fromJObject (jObject: JObject) : TableFields =
+  let fromJObject (jObject: JObject): TableFields =
     let oDataFields =
       jObject.Properties()
       |> Seq.filter (fun p -> p.Name.EndsWith "@odata.type")
