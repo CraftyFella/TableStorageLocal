@@ -45,30 +45,11 @@ let private toResponse (writeCommandResponse: WriteCommandResponse): Http.Respon
 
 
 
-let toHttpResponse2 (batchResponse: BatchCommandResponse) (batchId: Guid) (changesetId: Guid): Http.Response =
-
-  (*
-
-BLANK_LINE
-BATCH_HEADER
-BLANK_LINE
-SEPERATOR
-BLANK_LINE
-RAW_RESPONSE
-BLANK_LINE
-BLANK_LINE
-SEPERATOR
-BLANK_LINE
-RAW_RESPONSE
-BLANK_LINE
-BLANK_LINE
-BATCH_FOOTER
-
-  *)
+let toHttpResponse (batchResponse: BatchCommandResponse): Http.Response =
 
 
-  let batchId = batchId.ToString()
-  let changesetId = changesetId.ToString()
+  let batchId = Guid.NewGuid().ToString()
+  let changesetId = Guid.NewGuid().ToString()
   let header = batchHeader batchId changesetId
   let footer = batchFooter batchId changesetId
   let seperator = changesetSeperator changesetId
@@ -91,6 +72,3 @@ BATCH_FOOTER
         "X-Content-Type-Options", "nosniff" ]
       |> dict
     Body = body }
-
-let toHttpResponse (batchResponse: BatchCommandResponse): Http.Response =
-  toHttpResponse2 batchResponse (Guid.NewGuid()) (Guid.NewGuid())
