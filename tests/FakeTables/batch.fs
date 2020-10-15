@@ -4,6 +4,7 @@ open Expecto
 open System
 open Host
 open Microsoft.Azure.Cosmos.Table
+open Domain
 
 (*
 
@@ -133,7 +134,36 @@ HTTP/1.1 202 Accepted
 let batchTests =
   testList
     "batch insert"
-    [ ftest "row doesn't exist is accepted" {
+    [ test "wibble" {
+
+          let response: BatchCommandResponse = {
+            CommandResponses = [ Ack; Ack ]
+          }
+
+          let response = BatchHttp.toHttpResponse2 response (Guid.Parse("f325b4d2b9814a6b97e58a7e8959c7da")) (Guid.Parse("f3cd6a4b2d63475f8a4065107d494eef"))
+
+          let expected = """--batchresponse_f325b4d2b9814a6b97e58a7e8959c7da
+Content-Type: multipart/mixed; boundary=changesetresponse_f3cd6a4b2d63475f8a4065107d494eef
+
+--changesetresponse_f3cd6a4b2d63475f8a4065107d494eef
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+
+HTTP/1.1 204 No Content
+
+--changesetresponse_f3cd6a4b2d63475f8a4065107d494eef
+Content-Type: application/http
+Content-Transfer-Encoding: binary
+
+HTTP/1.1 204 No Content
+
+--changesetresponse_f3cd6a4b2d63475f8a4065107d494eef--
+--batchresponse_f325b4d2b9814a6b97e58a7e8959c7da--"""
+
+          Expect.equal response.Body expected ""
+      }
+
+      ftest "row doesn't exist is accepted" {
         let table = createFakeTables ()
         let batch = TableBatchOperation()
 

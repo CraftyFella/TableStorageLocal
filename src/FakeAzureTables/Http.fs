@@ -75,7 +75,6 @@ module Response =
     let sb = StringBuilder()
     sb.Append rawStatusCode |> ignore
     headers |> Seq.map sb.Append |> ignore
-    sb.AppendLine() |> ignore
     if response.Body <> null then sb.Append response.Body |> ignore
     sb.ToString()
 
