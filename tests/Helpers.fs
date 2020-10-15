@@ -4,6 +4,7 @@ module Helpers
 open Host
 open Microsoft.Azure.Cosmos.Table
 open System
+open System.Collections.Generic
 
 type FakeTables with
   member __.Client =
@@ -16,7 +17,9 @@ let createFakeTables () =
   table
 
 let allFieldTypes () =
-  let now = DateTimeOffset(2000, 1, 1, 1, 1, 1, 1, TimeSpan.Zero)
+  let now =
+    DateTimeOffset(2000, 1, 1, 1, 1, 1, 1, TimeSpan.Zero)
+
   [ ("StringField", EntityProperty.GeneratePropertyForString("StringValue"))
     ("DateField", EntityProperty.GeneratePropertyForDateTimeOffset(Nullable now))
     ("IntField", EntityProperty.GeneratePropertyForInt(Nullable 2))
@@ -26,6 +29,7 @@ let allFieldTypes () =
     ("BoolField", EntityProperty.GeneratePropertyForBool(Nullable true))
     ("ByteArrayField", EntityProperty.GeneratePropertyForByteArray([| 104uy; 101uy; 108uy; 108uy; 111uy |])) ]
   |> dict
+  |> Dictionary
 
 let createEntity pk rk =
   DynamicTableEntity(pk, rk, "*", allFieldTypes ())
