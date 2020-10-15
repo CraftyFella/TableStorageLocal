@@ -8,7 +8,6 @@ open Microsoft.AspNetCore.Builder
 open Http
 open CommandHandler
 open LiteDB
-open Domain
 
 let private findPort () =
   TcpListener(IPAddress.Loopback, 0)
@@ -20,21 +19,24 @@ let private findPort () =
             p
 
 let private app db (appBuilder: IApplicationBuilder) =
-  let inner = httpHandler (commandHandler db)
-  appBuilder.Run(fun ctx -> exceptonLoggingHttpHandler inner ctx)
+  let inner = commandHandler db |> httpHandler
+  appBuilder.Run(fun ctx -> exceptionLoggingHttpHandler inner ctx)
 
-type FakeTables() =
+type FakeTables(?connectionString) =
+
+  let connectionString =
+    connectionString
+    |> Option.defaultValue "filename=:memory:"
 
   let db =
-    new LiteDatabase("filename=:memory:", Bson.FieldValue.mapper ())
+    new LiteDatabase(connectionString, Bson.FieldValue.mapper ())
 
   let port = findPort ()
-  // let port = 10002
   let url = sprintf "http://127.0.0.1:%i" port
 
   let connectionString =
     sprintf
-      "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://localhost.charlesproxy.com:%i/devstoreaccount1;"
+      "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://localhost:%i/devstoreaccount1;"
       port
 
   let webHost =
