@@ -82,21 +82,20 @@ let tableCommandHandler (db: ILiteDatabase) command =
 
 let writeCommandHandler (db: ILiteDatabase) command =
   match command with
-  | InsertOrMerge (table, newRow) ->
+  | InsertOrMerge (table, row) ->
       let table = db.GetTable table
 
       let row =
-        match newRow.Keys
+        match row.Keys
               |> TableKeys.toBsonExpression
               |> table.TryFindOne with
         | Some existingRow ->
-            let mergedRow = { newRow with Fields = Dictionary() }
-            for (KeyValue (name, existingValue)) in existingRow.Fields do
-              match newRow.Fields.TryGetValue name with
-              | true, newValue -> mergedRow.Fields.Add(name, newValue)
-              | _ -> mergedRow.Fields.Add(name, existingValue)
-            mergedRow
-        | _ -> newRow
+            for (KeyValue (name, field)) in row.Fields do
+              match existingRow.Fields.ContainsKey name with
+              | true -> existingRow.Fields.[name] <- field
+              | _ -> existingRow.Fields.Add(name, field)
+            existingRow
+        | _ -> row
 
       table.Upsert row |> ignore
       WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
