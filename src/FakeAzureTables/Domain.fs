@@ -50,10 +50,34 @@ type TableRow =
   member __.Id =
     (__.Keys.PartitionKey + __.Keys.RowKey).ToLower()
 
+  member __.ETag =
+    match __.Fields.TryGetValue "Timestamp" with
+    | true, FieldValue.Date etag -> etag
+    | _ -> Unchecked.defaultof<DateTimeOffset>
+
+module ETag =
+  let fromDateTimeOffset (input: DateTimeOffset) =
+    sprintf "W/\"datetime'%s'\"" (input.ToString("s") + "Z")
+
+  let toDateTimeOffset (input: string) =
+    let pattern = "datetime'(.+)'"
+
+    let result =
+      System.Text.RegularExpressions.Regex.Match(input, pattern)
+
+    match result.Success with
+    | true ->
+        match DateTimeOffset.TryParse result.Groups.[1].Value with
+        | true, etag -> etag
+        | _ -> failwithf "Not a valid datetimeoffset"
+    | _ -> failwithf "Not a valid eTag"
+
+
 type TableCommand = CreateTable of Table: string
 
 type WriteCommand =
   | Insert of Table: string * TableRow
+  | Replace of Table: string * ETag: DateTimeOffset * TableRow
   | InsertOrReplace of Table: string * TableRow
   | InsertOrMerge of Table: string * TableRow
   | Delete of Table: string * TableKeys
@@ -62,8 +86,7 @@ type ReadCommand =
   | Get of Table: string * TableKeys
   | Query of Table: string * Filter: string option
 
-type BatchCommand =
-  { Commands: WriteCommand list }
+type BatchCommand = { Commands: WriteCommand list }
 
 type Command =
   | Write of WriteCommand
@@ -77,11 +100,15 @@ type TableConflictReason =
 
 type WriteConflictReason =
   | KeyAlreadyExists
+  | EntityDoesntExist
+  | UpdateConditionNotSatisfied
+
 type TableCommandResponse =
   | Ack
   | Conflict of TableConflictReason
+
 type WriteCommandResponse =
-  | Ack of TableKeys * DateTimeOffset
+  | Ack of TableKeys * ETag: DateTimeOffset
   | Conflict of WriteConflictReason
 
 type ReadCommandResponse =
@@ -89,7 +116,8 @@ type ReadCommandResponse =
   | QueryResponse of TableRow list
   | NotFoundResponse
 
-type BatchCommandResponse = { CommandResponses: WriteCommandResponse list }
+type BatchCommandResponse =
+  { CommandResponses: WriteCommandResponse list }
 
 type CommandResult =
   | TableResponse of TableCommandResponse

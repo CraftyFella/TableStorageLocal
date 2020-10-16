@@ -29,7 +29,7 @@ let private toResponse (writeCommandResponse: WriteCommandResponse): Http.Respon
             "DataServiceVersion", "3.0;"
             "Location", sprintf "https://podlocaltests.table.core.windows.net/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey
             "DataServiceId", sprintf "https://podlocaltests.table.core.windows.net/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey
-            "ETag", sprintf "W/\"datetime'%s'\"" (etag.ToString("s") + "Z")
+            "ETag", etag |> ETag.fromDateTimeOffset
             ]
           |> dict
         Body = "" }

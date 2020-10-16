@@ -19,6 +19,7 @@ let insertTests =
           |> table.Execute
 
         Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+        Expect.notEqual (actual.Etag) null "etag should be returned"
       }
 
       test "row exists causes conflict exception" {

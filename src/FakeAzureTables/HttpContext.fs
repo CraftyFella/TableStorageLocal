@@ -7,6 +7,7 @@ open System.Threading.Tasks
 open System.Text.RegularExpressions
 open Domain
 open Microsoft.Extensions.Primitives
+open System
 
 module private Request =
   open Http
@@ -54,7 +55,7 @@ module private Request =
         | _ -> None
     | _ -> None
 
-  let private (|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|) (request: Request) =
+  let private (|ReplaceRequest|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|) (request: Request) =
     match request.Path with
     | Regex "^\/devstoreaccount1\/(\w+)\(PartitionKey='(.+)',RowKey='(.+)'\)$" [ tableName; p; r ] ->
         match request.Method with
@@ -63,7 +64,9 @@ module private Request =
             InsertOrMergeRequest(tableName, p, r, jObject)
         | Method.Put ->
             let jObject = JObject.Parse request.Body
-            InsertOrReplaceRequest(tableName, p, r, jObject)
+            match request.Headers.TryGetValue("If-Match") with
+            | true, [| etag |] -> ReplaceRequest(tableName, p, r, etag |> ETag.toDateTimeOffset, jObject)
+            | _ -> InsertOrReplaceRequest(tableName, p, r, jObject)
         | Method.Get -> GetRequest(tableName, p, r)
         | Method.Delete -> DeleteRequest(tableName, p, r)
         | _ -> NotFoundRequest
@@ -154,6 +157,16 @@ module private Request =
              Fields = (fields |> TableFields.fromJObject) })
         |> Write
         |> Some
+    | ReplaceRequest (table, partitionKey, rowKey, etag, fields) ->
+        Replace
+          (table,
+           etag,
+           { Keys =
+               { PartitionKey = partitionKey
+                 RowKey = rowKey }
+             Fields = (fields |> TableFields.fromJObject) })
+        |> Write
+        |> Some
     | DeleteRequest (table, partitionKey, rowKey) ->
         Delete
           (table,
@@ -206,11 +219,16 @@ let httpHandler commandHandler (ctx: HttpContext) =
             | TableCommandResponse.Conflict _ -> ctx.Response.StatusCode <- 409
         | WriteResponse writeResponse ->
             match writeResponse with
-            | Ack _ -> ctx.Response.StatusCode <- 204
+            | Ack (_, etag) ->
+                ctx.Response.Headers.Add("ETag", StringValues(etag |> ETag.fromDateTimeOffset))
+                ctx.Response.StatusCode <- 204
+            | Conflict UpdateConditionNotSatisfied -> 
+              ctx.Response.StatusCode <- 412
             | Conflict _ -> ctx.Response.StatusCode <- 409
         | ReadResponse readResponse ->
             match readResponse with
             | GetResponse response ->
+                ctx.Response.Headers.Add("ETag", StringValues(response.ETag |> ETag.fromDateTimeOffset))
                 ctx.Response.StatusCode <- 200
                 ctx.Response.ContentType <- "application/json; charset=utf-8"
                 let jObject = response |> TableRow.toJObject
