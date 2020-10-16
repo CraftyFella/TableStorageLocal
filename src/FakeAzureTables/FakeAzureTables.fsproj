@@ -9,9 +9,15 @@
     <PackageId>FakeAzureTables</PackageId>
     <PackageTags>azure;tablestorage;tables</PackageTags>
     <PackageProjectUrl>https://github.com/CraftyFella/FakeAzureTables</PackageProjectUrl>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageIcon>logo.png</PackageIcon>
     <RepositoryType>git</RepositoryType>
     <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
   </PropertyGroup>
+    <ItemGroup>
+    <None Include="..\LICENSE" Pack="true" PackagePath="" />
+    <None Include="..\logo.png" Pack="true" PackagePath="" />
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="Domain.fs" />
     <Compile Include="FilterParser.fs" />
