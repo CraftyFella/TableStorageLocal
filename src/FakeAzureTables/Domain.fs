@@ -139,21 +139,23 @@ module TableFields =
            match value with
            | FieldValue.String value -> [ JProperty(name, value) ]
            | FieldValue.Long value ->
-               [ JProperty(name, string value)
-                 JProperty(sprintf "%s@odata.type" name, "Edm.Int64") ]
+               [ JProperty(sprintf "%s@odata.type" name, "Edm.Int64")
+                 JProperty(name, string value) ]
            | FieldValue.Int value -> [ JProperty(name, value) ]
            | FieldValue.Guid value ->
-               [ JProperty(name, value)
-                 JProperty(sprintf "%s@odata.type" name, "Edm.Guid") ]
+               [ JProperty(sprintf "%s@odata.type" name, "Edm.Guid")
+                 JProperty(name, value) ]
            | FieldValue.Double value -> [ JProperty(name, value) ]
+           | FieldValue.Date value when name = "Timestamp" ->
+               [ JProperty("odata.etag", value |> ETag.fromDateTimeOffset)
+                 JProperty(name, value) ]
            | FieldValue.Date value ->
-               [ JProperty(name, value)
-                 JProperty(sprintf "%s@odata.type" name, "Edm.DateTime") ]
+               [ JProperty(sprintf "%s@odata.type" name, "Edm.DateTime")
+                 JProperty(name, value) ]
            | FieldValue.Bool value -> [ JProperty(name, value) ]
            | FieldValue.Binary value ->
-               [ JProperty(name, value)
-                 JProperty(sprintf "%s@odata.type" name, "Edm.Binary") ]
-
+               [ JProperty(sprintf "%s@odata.type" name, "Edm.Binary")
+                 JProperty(name, value) ]
            )
       |> List.collect id
 
@@ -210,4 +212,4 @@ module TableRow =
 
     let fields = TableFields.toJProperties tableFields
 
-    JObject(requiredFields |> List.append fields)
+    JObject(fields |> List.append requiredFields)
