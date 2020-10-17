@@ -12,7 +12,7 @@ type FakeTables with
 
 let createFakeTables () =
   let tables = new FakeTables()
-  let table = tables.Client.GetTableReference "test"
+  let table = tables.Client.GetTableReference "test7"
   table.CreateIfNotExists() |> ignore
   table
 
@@ -28,6 +28,11 @@ let allFieldTypes () =
     ("FloatField", EntityProperty.GeneratePropertyForDouble(Nullable 4.))
     ("BoolField", EntityProperty.GeneratePropertyForBool(Nullable true))
     ("ByteArrayField", EntityProperty.GeneratePropertyForByteArray([| 104uy; 101uy; 108uy; 108uy; 111uy |])) ]
+  |> dict
+  |> Dictionary
+
+let stringFieldType value =
+  [ ("StringField", EntityProperty.GeneratePropertyForString(value)) ]
   |> dict
   |> Dictionary
 

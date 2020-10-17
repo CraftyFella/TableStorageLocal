@@ -19,6 +19,7 @@ let insertTests =
           |> table.Execute
 
         Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+        Expect.isNotNull (actual.Etag) "eTag is expected"
       }
 
       test "row exists causes conflict exception" {
@@ -41,10 +42,10 @@ let insertTests =
       test "inserted row is retrievable" {
         let table = createFakeTables ()
         let fields = allFieldTypes ()
-        DynamicTableEntity("pk2", "r2k", "*", fields)
-        |> TableOperation.Insert
-        |> table.Execute
-        |> ignore
+        let insertedResult = 
+          DynamicTableEntity("pk2", "r2k", "*", fields)
+          |> TableOperation.Insert
+          |> table.Execute
 
         let actual =
           TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")
@@ -57,6 +58,8 @@ let insertTests =
 
         Expect.equal (result.PartitionKey) "pk2" "unexpected value"
         Expect.equal (result.RowKey) "r2k" "unexpected value"
+        Expect.isNotNull (actual.Etag) "eTag is expected"
+        Expect.equal insertedResult.Etag (actual.Etag) "eTags should match"
 
         for field in fields do
           Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"

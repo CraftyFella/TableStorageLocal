@@ -43,6 +43,7 @@ let searchTests =
         Expect.equal rowKeys [ "rk1"; "rk2"; "rk4"; "rk5" ] "unexpected row Keys"
 
         for result in results do
+          Expect.isNotNull result.ETag "eTag is expected"
           for field in allFieldTypes () do
             Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
 

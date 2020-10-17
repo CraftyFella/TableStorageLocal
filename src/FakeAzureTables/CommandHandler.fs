@@ -70,6 +70,11 @@ type ILiteCollection<'T> with
 let tableNameIsValid tableName =
   Regex.IsMatch(tableName, "^[A-Za-z0-9]{2,62}$")
 
+let withETag (etag: DateTimeOffset) (row: TableRow) =
+  row.Fields.TryAdd("Timestamp", FieldValue.Date etag)
+  |> ignore
+  row
+
 let tableCommandHandler (db: ILiteDatabase) command =
   match command with
   | CreateTable table ->
@@ -84,7 +89,7 @@ let writeCommandHandler (db: ILiteDatabase) command =
   match command with
   | InsertOrMerge (table, row) ->
       let table = db.GetTable table
-
+      let etag = ETag.create ()
       let row =
         match row.Keys
               |> TableKeys.toBsonExpression
@@ -97,17 +102,31 @@ let writeCommandHandler (db: ILiteDatabase) command =
             existingRow
         | _ -> row
 
-      table.Upsert row |> ignore
-      WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
+      row |> withETag etag |> table.Upsert |> ignore
+      WriteCommandResponse.Ack(row.Keys, etag)
   | InsertOrReplace (table, row) ->
       let table = db.GetTable table
-      table.Upsert row |> ignore
-      WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
+      let etag = ETag.create ()
+      row |> withETag etag |> table.Upsert |> ignore
+      WriteCommandResponse.Ack(row.Keys, etag)
   | Insert (table, row) ->
       let table = db.GetTable table
-      match table.TryInsert row with
-      | true -> WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
+      let etag = ETag.create ()
+      match row |> withETag etag |> table.TryInsert with
+      | true -> WriteCommandResponse.Ack(row.Keys, etag)
       | false -> WriteCommandResponse.Conflict KeyAlreadyExists
+  | Replace (table, existingETag, row) ->
+      let table = db.GetTable table
+      let etag = ETag.create ()
+      match row.Keys
+            |> TableKeys.toBsonExpression
+            |> table.TryFindOne with
+      | Some existing when (existing.ETag |> ETag.toText) = (existingETag |> ETag.toText) ->
+          match table.Update(row |> withETag etag) with
+          | true -> WriteCommandResponse.Ack(row.Keys, etag)
+          | _ -> WriteCommandResponse.Conflict EntityDoesntExist
+      | Some _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
+      | _ -> WriteCommandResponse.Conflict EntityDoesntExist
   | Delete (table, keys) ->
       let table = db.GetTable table
       table.DeleteMany(keys |> TableKeys.toBsonExpression)
@@ -147,17 +166,16 @@ let commandHandler (db: ILiteDatabase) command =
   | Write command -> command |> writeCommandHandler |> WriteResponse
   | Read command -> command |> readCommandHandler |> ReadResponse
   | Batch batch ->
-      match db.BeginTrans() with
-      | true ->
-          try
+      db.BeginTrans() |> ignore
+      try
 
-            let commandResults =
-              batch.Commands |> List.map writeCommandHandler
+        let commandResults =
+          batch.Commands |> List.map writeCommandHandler
 
-            db.Commit() |> ignore
+        db.Commit() |> ignore
 
-            { CommandResponses = commandResults }
-            |> BatchResponse
-          with ex ->
-            db.Rollback() |> ignore
-            reraise ()
+        { CommandResponses = commandResults }
+        |> BatchResponse
+      with ex ->
+        db.Rollback() |> ignore
+        reraise ()
