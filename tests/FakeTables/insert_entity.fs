@@ -1,10 +1,7 @@
 module insert_entity
 
 open Expecto
-open System
-open Host
 open Microsoft.Azure.Cosmos.Table
-
 
 [<Tests>]
 let insertTests =
@@ -42,7 +39,8 @@ let insertTests =
       test "inserted row is retrievable" {
         let table = createFakeTables ()
         let fields = allFieldTypes ()
-        let insertedResult = 
+
+        let insertedResult =
           DynamicTableEntity("pk2", "r2k", "*", fields)
           |> TableOperation.Insert
           |> table.Execute
@@ -63,4 +61,4 @@ let insertTests =
 
         for field in fields do
           Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
-      }]
+      } ]

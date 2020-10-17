@@ -85,11 +85,17 @@ let tableCommandHandler (db: ILiteDatabase) command =
           db.GetTable table |> ignore
           TableCommandResponse.Ack
 
+  | ListTables ->
+      db.TablesCollection.FindAll()
+      |> Seq.map (fun kvp -> {| TableName = kvp.Key |})
+      |> TableCommandResponse.TableList
+
 let writeCommandHandler (db: ILiteDatabase) command =
   match command with
   | InsertOrMerge (table, row) ->
       let table = db.GetTable table
       let etag = ETag.create ()
+
       let row =
         match row.Keys
               |> TableKeys.toBsonExpression

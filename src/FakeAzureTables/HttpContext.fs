@@ -7,7 +7,7 @@ open System.Threading.Tasks
 open System.Text.RegularExpressions
 open Domain
 open Microsoft.Extensions.Primitives
-open System
+open Newtonsoft.Json
 
 module private Request =
   open Http
@@ -39,18 +39,19 @@ module private Request =
         | _ -> None
     | _ -> None
 
+  let private (|ListTablesRequest|_|) (request: Request) =
+    match request.Method, request.Path with
+    | Method.Get, "/devstoreaccount1/Tables" -> Some()
+    | _ -> None
 
   let private (|InsertRequest|_|) (request: Request) =
-    match request.Path with
-    | Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName ] ->
-        match request.Method with
-        | Method.Post ->
-            let jObject = JObject.Parse request.Body
-            match jObject.TryGetValue "PartitionKey" with
-            | true, p ->
-                match jObject.TryGetValue "RowKey" with
-                | true, r -> Some(tableName, string p, string r, jObject)
-                | _ -> None
+    match request.Method, request.Path with
+    | Method.Post, Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName ] ->
+        let jObject = JObject.Parse request.Body
+        match jObject.TryGetValue "PartitionKey" with
+        | true, p ->
+            match jObject.TryGetValue "RowKey" with
+            | true, r -> Some(tableName, string p, string r, jObject)
             | _ -> None
         | _ -> None
     | _ -> None
@@ -129,6 +130,7 @@ module private Request =
 
   let rec toCommand =
     function
+    | ListTablesRequest -> Table ListTables |> Some
     | CreateTableRequest name -> CreateTable name |> Table |> Some
     | InsertOrMergeRequest (table, partitionKey, rowKey, fields) ->
         InsertOrMerge
@@ -217,13 +219,17 @@ let httpHandler commandHandler (ctx: HttpContext) =
             match tableResponse with
             | TableCommandResponse.Ack -> ctx.Response.StatusCode <- 204
             | TableCommandResponse.Conflict _ -> ctx.Response.StatusCode <- 409
+            | TableList tableNames ->
+                ctx.Response.StatusCode <- 200
+                ctx.Response.ContentType <- "application/json; charset=utf-8"
+                do! JsonConvert.SerializeObject {| value = tableNames |}
+                    |> ctx.Response.WriteAsync
         | WriteResponse writeResponse ->
             match writeResponse with
             | Ack (_, etag) ->
                 ctx.Response.Headers.Add("ETag", StringValues(etag |> ETag.toText))
                 ctx.Response.StatusCode <- 204
-            | Conflict UpdateConditionNotSatisfied -> 
-              ctx.Response.StatusCode <- 412
+            | Conflict UpdateConditionNotSatisfied -> ctx.Response.StatusCode <- 412
             | Conflict _ -> ctx.Response.StatusCode <- 409
         | ReadResponse readResponse ->
             match readResponse with

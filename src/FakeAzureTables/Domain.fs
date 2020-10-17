@@ -59,8 +59,7 @@ module ETag =
   let toText (input: DateTimeOffset) =
     sprintf "W/\"datetime'%s'\"" (input.ToString("s") + "Z")
 
-  let create() =
-    System.DateTimeOffset.UtcNow
+  let create () = System.DateTimeOffset.UtcNow
 
   let fromText (input: string) =
     let pattern = "datetime'(.+)'"
@@ -75,8 +74,9 @@ module ETag =
         | _ -> failwithf "Not a valid datetimeoffset"
     | _ -> failwithf "Not a valid eTag"
 
-
-type TableCommand = CreateTable of Table: string
+type TableCommand =
+  | CreateTable of Table: string
+  | ListTables
 
 type WriteCommand =
   | Insert of Table: string * TableRow
@@ -109,6 +109,7 @@ type WriteConflictReason =
 type TableCommandResponse =
   | Ack
   | Conflict of TableConflictReason
+  | TableList of {| TableName: string |} seq
 
 type WriteCommandResponse =
   | Ack of TableKeys * ETag: DateTimeOffset
@@ -158,8 +159,7 @@ module TableFields =
            | FieldValue.Bool value -> [ JProperty(name, value) ]
            | FieldValue.Binary value ->
                [ JProperty(sprintf "%s@odata.type" name, "Edm.Binary")
-                 JProperty(name, value) ]
-           )
+                 JProperty(name, value) ])
       |> List.collect id
 
     fields
