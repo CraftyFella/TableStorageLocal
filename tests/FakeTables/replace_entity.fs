@@ -18,7 +18,7 @@ let replaceTests =
           |> TableOperation.Insert
           |> table.Execute
 
-        Expect.notEqual (actual.Etag) null "etag should be returned"
+        Expect.isNotNull (actual.Etag) "eTag is expected"
 
         let _ =
           TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")

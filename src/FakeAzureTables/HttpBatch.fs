@@ -3,7 +3,6 @@ module HttpBatch
 open Http
 open Domain
 open System
-open System.Collections.Generic
 
 let private batchHeader batchId changesetId =
   sprintf """--batchresponse_%s
@@ -27,9 +26,9 @@ let private toResponse (writeCommandResponse: WriteCommandResponse): Http.Respon
             "Cache-Control", "no-cache"
             "Preference-Applied", "return-no-content"
             "DataServiceVersion", "3.0;"
-            "Location", sprintf "https://podlocaltests.table.core.windows.net/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey
-            "DataServiceId", sprintf "https://podlocaltests.table.core.windows.net/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey
-            "ETag", etag |> ETag.fromDateTimeOffset
+            "Location", sprintf "http://localhost/devstoreaccount1/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey   // TODO: Work out how to get host name and port into this?
+            "DataServiceId", sprintf "http://localhost/devstoreaccount1/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey
+            "ETag", etag |> ETag.toText
             ]
           |> dict
         Body = "" }
@@ -57,8 +56,7 @@ let toHttpResponse (batchResponse: BatchCommandResponse): Http.Response =
 
   let main =
     batchResponse.CommandResponses
-    |> List.map toResponse
-    |> List.map Response.toRaw
+    |> List.map (toResponse >> Response.toRaw)
     |> List.map (sprintf "%s%s%s" seperator blankLine)
     |> fun line -> String.Join(sprintf "%s" blankLine, line)
 

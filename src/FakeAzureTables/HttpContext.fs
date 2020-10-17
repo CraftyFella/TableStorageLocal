@@ -65,7 +65,7 @@ module private Request =
         | Method.Put ->
             let jObject = JObject.Parse request.Body
             match request.Headers.TryGetValue("If-Match") with
-            | true, [| etag |] -> ReplaceRequest(tableName, p, r, etag |> ETag.toDateTimeOffset, jObject)
+            | true, [| etag |] -> ReplaceRequest(tableName, p, r, etag |> ETag.fromText, jObject)
             | _ -> InsertOrReplaceRequest(tableName, p, r, jObject)
         | Method.Get -> GetRequest(tableName, p, r)
         | Method.Delete -> DeleteRequest(tableName, p, r)
@@ -220,7 +220,7 @@ let httpHandler commandHandler (ctx: HttpContext) =
         | WriteResponse writeResponse ->
             match writeResponse with
             | Ack (_, etag) ->
-                ctx.Response.Headers.Add("ETag", StringValues(etag |> ETag.fromDateTimeOffset))
+                ctx.Response.Headers.Add("ETag", StringValues(etag |> ETag.toText))
                 ctx.Response.StatusCode <- 204
             | Conflict UpdateConditionNotSatisfied -> 
               ctx.Response.StatusCode <- 412
@@ -228,7 +228,7 @@ let httpHandler commandHandler (ctx: HttpContext) =
         | ReadResponse readResponse ->
             match readResponse with
             | GetResponse response ->
-                ctx.Response.Headers.Add("ETag", StringValues(response.ETag |> ETag.fromDateTimeOffset))
+                ctx.Response.Headers.Add("ETag", StringValues(response.ETag |> ETag.toText))
                 ctx.Response.StatusCode <- 200
                 ctx.Response.ContentType <- "application/json; charset=utf-8"
                 let jObject = response |> TableRow.toJObject

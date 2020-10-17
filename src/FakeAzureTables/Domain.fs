@@ -56,10 +56,13 @@ type TableRow =
     | _ -> Unchecked.defaultof<DateTimeOffset>
 
 module ETag =
-  let fromDateTimeOffset (input: DateTimeOffset) =
+  let toText (input: DateTimeOffset) =
     sprintf "W/\"datetime'%s'\"" (input.ToString("s") + "Z")
 
-  let toDateTimeOffset (input: string) =
+  let create() =
+    System.DateTimeOffset.UtcNow
+
+  let fromText (input: string) =
     let pattern = "datetime'(.+)'"
 
     let result =
@@ -147,7 +150,7 @@ module TableFields =
                  JProperty(name, value) ]
            | FieldValue.Double value -> [ JProperty(name, value) ]
            | FieldValue.Date value when name = "Timestamp" ->
-               [ JProperty("odata.etag", value |> ETag.fromDateTimeOffset)
+               [ JProperty("odata.etag", value |> ETag.toText)
                  JProperty(name, value) ]
            | FieldValue.Date value ->
                [ JProperty(sprintf "%s@odata.type" name, "Edm.DateTime")

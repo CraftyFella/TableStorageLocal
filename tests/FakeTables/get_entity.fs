@@ -29,7 +29,7 @@ let get_entity =
 
         Expect.equal (result.PartitionKey) "pk2" "unexpected value"
         Expect.equal (result.RowKey) "r2k" "unexpected value"
-        Expect.isNotNull (result.ETag) "unexpected value"
+        Expect.isNotNull (actual.Etag) "eTag is expected"
 
         for field in fields do
           Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"

@@ -89,7 +89,7 @@ let writeCommandHandler (db: ILiteDatabase) command =
   match command with
   | InsertOrMerge (table, row) ->
       let table = db.GetTable table
-
+      let etag = ETag.create ()
       let row =
         match row.Keys
               |> TableKeys.toBsonExpression
@@ -102,25 +102,26 @@ let writeCommandHandler (db: ILiteDatabase) command =
             existingRow
         | _ -> row
 
-      table.Upsert row |> ignore
-      WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
+      row |> withETag etag |> table.Upsert |> ignore
+      WriteCommandResponse.Ack(row.Keys, etag)
   | InsertOrReplace (table, row) ->
       let table = db.GetTable table
-      table.Upsert row |> ignore
-      WriteCommandResponse.Ack(row.Keys, System.DateTimeOffset.UtcNow)
+      let etag = ETag.create ()
+      row |> withETag etag |> table.Upsert |> ignore
+      WriteCommandResponse.Ack(row.Keys, etag)
   | Insert (table, row) ->
       let table = db.GetTable table
-      let etag = System.DateTimeOffset.UtcNow
+      let etag = ETag.create ()
       match row |> withETag etag |> table.TryInsert with
       | true -> WriteCommandResponse.Ack(row.Keys, etag)
       | false -> WriteCommandResponse.Conflict KeyAlreadyExists
   | Replace (table, existingETag, row) ->
       let table = db.GetTable table
-      let etag = System.DateTimeOffset.UtcNow
+      let etag = ETag.create ()
       match row.Keys
             |> TableKeys.toBsonExpression
             |> table.TryFindOne with
-      | Some existing when (existing.ETag |> ETag.fromDateTimeOffset) = (existingETag |> ETag.fromDateTimeOffset) ->
+      | Some existing when (existing.ETag |> ETag.toText) = (existingETag |> ETag.toText) ->
           match table.Update(row |> withETag etag) with
           | true -> WriteCommandResponse.Ack(row.Keys, etag)
           | _ -> WriteCommandResponse.Conflict EntityDoesntExist
