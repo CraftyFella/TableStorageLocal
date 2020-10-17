@@ -109,7 +109,7 @@ type WriteConflictReason =
 type TableCommandResponse =
   | Ack
   | Conflict of TableConflictReason
-  | TableList of {| TableName: string |} seq
+  | TableList of string seq
 
 type WriteCommandResponse =
   | Ack of TableKeys * ETag: DateTimeOffset

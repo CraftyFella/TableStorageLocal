@@ -222,7 +222,10 @@ let httpHandler commandHandler (ctx: HttpContext) =
             | TableList tableNames ->
                 ctx.Response.StatusCode <- 200
                 ctx.Response.ContentType <- "application/json; charset=utf-8"
-                do! JsonConvert.SerializeObject {| value = tableNames |}
+                do! JsonConvert.SerializeObject
+                      {| value =
+                           tableNames
+                           |> Seq.map (fun tableName -> {| TableName = tableName |}) |}
                     |> ctx.Response.WriteAsync
         | WriteResponse writeResponse ->
             match writeResponse with

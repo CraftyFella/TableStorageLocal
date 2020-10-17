@@ -87,7 +87,7 @@ let tableCommandHandler (db: ILiteDatabase) command =
 
   | ListTables ->
       db.TablesCollection.FindAll()
-      |> Seq.map (fun kvp -> {| TableName = kvp.Key |})
+      |> Seq.map (fun kvp -> kvp.Key)
       |> TableCommandResponse.TableList
 
 let writeCommandHandler (db: ILiteDatabase) command =
