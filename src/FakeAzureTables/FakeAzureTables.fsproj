@@ -27,6 +27,7 @@
     <Compile Include="HttpRequest.fs" />
     <Compile Include="HttpBatch.fs" />
     <Compile Include="HttpContext.fs" />
+    <Compile Include="Database.fs" />
     <Compile Include="CommandHandler.fs" />
     <Compile Include="Host.fs" />
   </ItemGroup>
