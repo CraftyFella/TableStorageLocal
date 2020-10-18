@@ -25,7 +25,7 @@
     <Compile Include="FilterApplier.fs" />
     <Compile Include="Http.fs" />
     <Compile Include="HttpRequest.fs" />
-    <Compile Include="HttpBatch.fs" />
+    <Compile Include="HttpResponse.fs" />
     <Compile Include="HttpContext.fs" />
     <Compile Include="Database.fs" />
     <Compile Include="CommandHandler.fs" />
