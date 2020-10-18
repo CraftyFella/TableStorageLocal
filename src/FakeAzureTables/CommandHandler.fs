@@ -101,11 +101,11 @@ let writeCommandHandler (db: ILiteDatabase) command =
               |> TableKeys.toBsonExpression
               |> table.TryFindOne with
         | Some existingRow ->
-            for (KeyValue (name, field)) in row.Fields do
-              match existingRow.Fields.ContainsKey name with
-              | true -> existingRow.Fields.[name] <- field
-              | _ -> existingRow.Fields.Add(name, field)
-            existingRow
+            for (KeyValue (key, value)) in existingRow.Fields do
+              match row.Fields.ContainsKey key with
+              | false -> row.Fields.Add(key, value)
+              | _ -> ()
+            row
         | _ -> row
 
       row |> withETag etag |> table.Upsert |> ignore
