@@ -55,13 +55,14 @@ type TableRow =
     | true, FieldValue.Date etag -> etag
     | _ -> Unchecked.defaultof<DateTimeOffset>
 
+[<RequireQualifiedAccess>]
 module ETag =
-  let toText (input: DateTimeOffset) =
+  let serialize (input: DateTimeOffset) =
     sprintf "W/\"datetime'%s'\"" (input.ToString("s") + "Z")
 
   let create () = System.DateTimeOffset.UtcNow
 
-  let fromText (input: string) =
+  let parse (input: string) =
     let pattern = "datetime'(.+)'"
 
     let result =
@@ -81,6 +82,7 @@ type TableCommand =
 type WriteCommand =
   | Insert of Table: string * TableRow
   | Replace of Table: string * ETag: DateTimeOffset * TableRow
+  | Merge of Table: string * ETag: DateTimeOffset * TableRow
   | InsertOrReplace of Table: string * TableRow
   | InsertOrMerge of Table: string * TableRow
   | Delete of Table: string * TableKeys
@@ -151,7 +153,7 @@ module TableFields =
                  JProperty(name, value) ]
            | FieldValue.Double value -> [ JProperty(name, value) ]
            | FieldValue.Date value when name = "Timestamp" ->
-               [ JProperty("odata.etag", value |> ETag.toText)
+               [ JProperty("odata.etag", value |> ETag.serialize)
                  JProperty(name, value) ]
            | FieldValue.Date value ->
                [ JProperty(sprintf "%s@odata.type" name, "Edm.DateTime")
@@ -216,3 +218,15 @@ module TableRow =
     let fields = TableFields.toJProperties tableFields
 
     JObject(fields |> List.append requiredFields)
+
+  let merge (existingRow: TableRow) (row: TableRow) =
+    for (KeyValue (key, value)) in existingRow.Fields do
+      match row.Fields.ContainsKey key with
+      | false -> row.Fields.Add(key, value)
+      | _ -> ()
+    row
+
+  let withETag (etag: DateTimeOffset) (row: TableRow) =
+    row.Fields.TryAdd("Timestamp", FieldValue.Date etag)
+    |> ignore
+    row

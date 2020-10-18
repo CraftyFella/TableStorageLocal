@@ -99,5 +99,4 @@ let toRequest (request: HttpRequest): Request =
         |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
         |> dict
       Uri = request.GetDisplayUrl() |> Uri }
-
   request

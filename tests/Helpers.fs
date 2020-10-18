@@ -47,6 +47,14 @@ let createEntityWithString pk rk stringValue =
      [ ("StringField", EntityProperty.GeneratePropertyForString(stringValue)) ]
      |> dict)
 
+let createEntityWithStringAndETag pk rk etag stringValue =
+  DynamicTableEntity
+    (pk,
+     rk,
+     etag,
+     [ ("StringField", EntityProperty.GeneratePropertyForString(stringValue)) ]
+     |> dict)
+
 let createEntityWithInt pk rk intValue =
   DynamicTableEntity
     (pk,

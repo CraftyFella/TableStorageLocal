@@ -70,10 +70,6 @@ type ILiteCollection<'T> with
 let tableNameIsValid tableName =
   Regex.IsMatch(tableName, "^[A-Za-z0-9]{2,62}$")
 
-let withETag (etag: DateTimeOffset) (row: TableRow) =
-  row.Fields.TryAdd("Timestamp", FieldValue.Date etag)
-  |> ignore
-  row
 
 let tableCommandHandler (db: ILiteDatabase) command =
   match command with
@@ -100,25 +96,26 @@ let writeCommandHandler (db: ILiteDatabase) command =
         match row.Keys
               |> TableKeys.toBsonExpression
               |> table.TryFindOne with
-        | Some existingRow ->
-            for (KeyValue (key, value)) in existingRow.Fields do
-              match row.Fields.ContainsKey key with
-              | false -> row.Fields.Add(key, value)
-              | _ -> ()
-            row
+        | Some existingRow -> row |> TableRow.merge existingRow
         | _ -> row
 
-      row |> withETag etag |> table.Upsert |> ignore
+      row
+      |> TableRow.withETag etag
+      |> table.Upsert
+      |> ignore
       WriteCommandResponse.Ack(row.Keys, etag)
   | InsertOrReplace (table, row) ->
       let table = db.GetTable table
       let etag = ETag.create ()
-      row |> withETag etag |> table.Upsert |> ignore
+      row
+      |> TableRow.withETag etag
+      |> table.Upsert
+      |> ignore
       WriteCommandResponse.Ack(row.Keys, etag)
   | Insert (table, row) ->
       let table = db.GetTable table
       let etag = ETag.create ()
-      match row |> withETag etag |> table.TryInsert with
+      match row |> TableRow.withETag etag |> table.TryInsert with
       | true -> WriteCommandResponse.Ack(row.Keys, etag)
       | false -> WriteCommandResponse.Conflict KeyAlreadyExists
   | Replace (table, existingETag, row) ->
@@ -127,8 +124,23 @@ let writeCommandHandler (db: ILiteDatabase) command =
       match row.Keys
             |> TableKeys.toBsonExpression
             |> table.TryFindOne with
-      | Some existing when (existing.ETag |> ETag.toText) = (existingETag |> ETag.toText) ->
-          match table.Update(row |> withETag etag) with
+      | Some existingRow when (existingRow.ETag |> ETag.serialize) = (existingETag |> ETag.serialize) ->
+          match table.Update(row |> TableRow.withETag etag) with
+          | true -> WriteCommandResponse.Ack(row.Keys, etag)
+          | _ -> WriteCommandResponse.Conflict EntityDoesntExist
+      | Some _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
+      | _ -> WriteCommandResponse.Conflict EntityDoesntExist
+  | Merge (table, existingETag, row) ->
+      let table = db.GetTable table
+      let etag = ETag.create ()
+      match row.Keys
+            |> TableKeys.toBsonExpression
+            |> table.TryFindOne with
+      | Some existingRow when (existingRow.ETag |> ETag.serialize) = (existingETag |> ETag.serialize) ->
+          match table.Update
+                  (row
+                   |> TableRow.merge existingRow
+                   |> TableRow.withETag etag) with
           | true -> WriteCommandResponse.Ack(row.Keys, etag)
           | _ -> WriteCommandResponse.Conflict EntityDoesntExist
       | Some _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
