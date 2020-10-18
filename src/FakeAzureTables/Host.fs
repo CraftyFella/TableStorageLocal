@@ -22,7 +22,7 @@ let private app db (appBuilder: IApplicationBuilder) =
   let inner = commandHandler db |> httpHandler
   appBuilder.Run(fun ctx -> exceptionLoggingHttpHandler inner ctx)
 
-type FakeTables(?connectionString) =
+type FakeTables(?connectionString, ?port) =
 
   let connectionString =
     connectionString
@@ -31,7 +31,7 @@ type FakeTables(?connectionString) =
   let db =
     new LiteDatabase(connectionString, Bson.FieldValue.mapper ())
 
-  let port = findPort ()
+  let port = port |> Option.defaultWith findPort
   let url = sprintf "http://127.0.0.1:%i" port
 
   let mutable connectionString =
