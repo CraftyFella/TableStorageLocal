@@ -28,7 +28,7 @@ let private toResponse (writeCommandResponse: WriteCommandResponse): Http.Respon
             "DataServiceVersion", "3.0;"
             "Location", sprintf "http://localhost/devstoreaccount1/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey   // TODO: Work out how to get host name and port into this?
             "DataServiceId", sprintf "http://localhost/devstoreaccount1/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey
-            "ETag", etag |> ETag.toText
+            "ETag", etag |> ETag.serialize
             ]
           |> dict
         Body = "" }

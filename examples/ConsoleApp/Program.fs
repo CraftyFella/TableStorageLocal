@@ -62,4 +62,7 @@ let main argv =
     printfn "RowKey is %A" result.RowKey
     printfn "Properties are %A" (result.Properties |> List.ofSeq)
 
+  printfn "ConnectionString is %A" tables.ConnectionString
+  Console.ReadLine() |> ignore
+
   0

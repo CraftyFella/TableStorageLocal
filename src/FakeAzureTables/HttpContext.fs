@@ -56,17 +56,19 @@ module private Request =
         | _ -> None
     | _ -> None
 
-  let private (|ReplaceRequest|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|) (request: Request) =
+  let private (|ReplaceRequest|MergeRequest|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|) (request: Request) =
     match request.Path with
     | Regex "^\/devstoreaccount1\/(\w+)\(PartitionKey='(.+)',RowKey='(.+)'\)$" [ tableName; p; r ] ->
         match request.Method with
         | Method.Post ->
             let jObject = JObject.Parse request.Body
-            InsertOrMergeRequest(tableName, p, r, jObject)
+            match request.Headers.TryGetValue("If-Match") with
+            | true, [| etag |] -> MergeRequest(tableName, p, r, etag |> ETag.parse, jObject)
+            | _ -> InsertOrMergeRequest(tableName, p, r, jObject)
         | Method.Put ->
             let jObject = JObject.Parse request.Body
             match request.Headers.TryGetValue("If-Match") with
-            | true, [| etag |] -> ReplaceRequest(tableName, p, r, etag |> ETag.fromText, jObject)
+            | true, [| etag |] -> ReplaceRequest(tableName, p, r, etag |> ETag.parse, jObject)
             | _ -> InsertOrReplaceRequest(tableName, p, r, jObject)
         | Method.Get -> GetRequest(tableName, p, r)
         | Method.Delete -> DeleteRequest(tableName, p, r)
@@ -169,6 +171,16 @@ module private Request =
              Fields = (fields |> TableFields.fromJObject) })
         |> Write
         |> Some
+    | MergeRequest (table, partitionKey, rowKey, etag, fields) ->
+        Merge
+          (table,
+           etag,
+           { Keys =
+               { PartitionKey = partitionKey
+                 RowKey = rowKey }
+             Fields = (fields |> TableFields.fromJObject) })
+        |> Write
+        |> Some
     | DeleteRequest (table, partitionKey, rowKey) ->
         Delete
           (table,
@@ -230,14 +242,14 @@ let httpHandler commandHandler (ctx: HttpContext) =
         | WriteResponse writeResponse ->
             match writeResponse with
             | Ack (_, etag) ->
-                ctx.Response.Headers.Add("ETag", StringValues(etag |> ETag.toText))
+                ctx.Response.Headers.Add("ETag", StringValues(etag |> ETag.serialize))
                 ctx.Response.StatusCode <- 204
             | Conflict UpdateConditionNotSatisfied -> ctx.Response.StatusCode <- 412
             | Conflict _ -> ctx.Response.StatusCode <- 409
         | ReadResponse readResponse ->
             match readResponse with
             | GetResponse response ->
-                ctx.Response.Headers.Add("ETag", StringValues(response.ETag |> ETag.toText))
+                ctx.Response.Headers.Add("ETag", StringValues(response.ETag |> ETag.serialize))
                 ctx.Response.StatusCode <- 200
                 ctx.Response.ContentType <- "application/json; charset=utf-8"
                 let jObject = response |> TableRow.toJObject
