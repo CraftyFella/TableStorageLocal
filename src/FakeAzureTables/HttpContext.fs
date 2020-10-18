@@ -222,12 +222,14 @@ let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) 
       ctx.Response.StatusCode <- 500
   } :> Task
 
+
+
 let httpHandler commandHandler (ctx: HttpContext) =
-  task {
-    match ctx.Request |> Http.toRequest |> Request.toCommand with
-    | Some command ->
-        do! commandHandler command
-            |> HttpResponse.fromCommandResponse
-            |> HttpResponse.applyToCtx ctx
-    | None -> ctx.Response.StatusCode <- 400
-  } :> Task
+  ctx.Request
+  |> HttpRequest.toRequest
+  |> Request.toCommand
+  |> Option.map
+       (commandHandler
+        >> HttpResponse.fromCommandResponse
+        >> HttpResponse.applyToCtx ctx)
+  |> Option.defaultWith (HttpResponse.statusCode ctx StatusCode.NotFound) :> Task

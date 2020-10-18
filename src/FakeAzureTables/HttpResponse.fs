@@ -170,3 +170,5 @@ let applyToCtx (ctx: HttpContext) (response: Response) =
     if response.Body.IsSome
     then do! ctx.Response.WriteAsync response.Body.Value
   }
+
+let statusCode (ctx: HttpContext) (code: StatusCode) () = task { ctx.Response.StatusCode <- int code }

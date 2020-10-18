@@ -4,7 +4,6 @@ open Microsoft.AspNetCore.Http
 open System.IO
 open System.Collections.Generic
 open System
-open Microsoft.AspNetCore.Http.Extensions
 open System.Text
 
 type HttpRequest with
@@ -94,23 +93,3 @@ module Response =
     response.Body |> Option.iter (sb.Append >> ignore)
     let raw = sb.ToString()
     raw
-
-let toMethod m =
-  Enum.Parse(typeof<Method>, m, true) :?> Method
-
-let toRequest (request: HttpRequest): Request =
-  let request: Request =
-    { Method = request.Method |> toMethod
-      Path = request.Path.Value
-      Body = request.BodyString
-      Headers =
-        request.Headers
-        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
-        |> dict
-      Query =
-        request.Query
-        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
-        |> dict
-      Uri = request.GetDisplayUrl() |> Uri }
-
-  request
