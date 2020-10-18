@@ -8,6 +8,7 @@ open System.Text.RegularExpressions
 open Domain
 open Microsoft.Extensions.Primitives
 open Newtonsoft.Json
+open Http
 
 module private Request =
   open Http
@@ -221,60 +222,14 @@ let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) 
       ctx.Response.StatusCode <- 500
   } :> Task
 
+
+
 let httpHandler commandHandler (ctx: HttpContext) =
-  task {
-    match ctx.Request |> Http.toRequest |> Request.toCommand with
-    | Some command ->
-        let commandResult = commandHandler command
-        match commandResult with
-        | TableResponse tableResponse ->
-            match tableResponse with
-            | TableCommandResponse.Ack -> ctx.Response.StatusCode <- 204
-            | TableCommandResponse.Conflict _ -> ctx.Response.StatusCode <- 409
-            | TableList tableNames ->
-                ctx.Response.StatusCode <- 200
-                ctx.Response.ContentType <- "application/json; charset=utf-8"
-                do! JsonConvert.SerializeObject
-                      {| value =
-                           tableNames
-                           |> Seq.map (fun tableName -> {| TableName = tableName |}) |}
-                    |> ctx.Response.WriteAsync
-        | WriteResponse writeResponse ->
-            match writeResponse with
-            | Ack (_, etag) ->
-                ctx.Response.Headers.Add("ETag", StringValues(etag |> ETag.serialize))
-                ctx.Response.StatusCode <- 204
-            | Conflict UpdateConditionNotSatisfied -> ctx.Response.StatusCode <- 412
-            | Conflict _ -> ctx.Response.StatusCode <- 409
-        | ReadResponse readResponse ->
-            match readResponse with
-            | GetResponse response ->
-                ctx.Response.Headers.Add("ETag", StringValues(response.ETag |> ETag.serialize))
-                ctx.Response.StatusCode <- 200
-                ctx.Response.ContentType <- "application/json; charset=utf-8"
-                let jObject = response |> TableRow.toJObject
-                let json = jObject.ToString()
-                do! json |> ctx.Response.WriteAsync
-            | QueryResponse results ->
-                ctx.Response.StatusCode <- 200
-                ctx.Response.ContentType <- "application/json; charset=utf-8"
-
-                let rows =
-                  results |> List.map (TableRow.toJObject) |> JArray
-
-                let response = JObject([ JProperty("value", rows) ])
-                let json = (response.ToString())
-                do! json |> ctx.Response.WriteAsync
-            | ReadCommandResponse.NotFoundResponse -> ctx.Response.StatusCode <- 404
-        | BatchResponse commandResults ->
-            let response = HttpBatch.toHttpResponse commandResults
-            ctx.Response.StatusCode <- int response.StatusCode
-            response.Headers
-            |> Seq.iter (fun kvp -> ctx.Response.Headers.Add(kvp.Key, StringValues(kvp.Value)))
-            do! ctx.Response.WriteAsync response.Body
-        | NotFoundResponse ->
-            let r = ctx.Response
-
-            ctx.Response.StatusCode <- 404
-    | None -> ctx.Response.StatusCode <- 400
-  } :> Task
+  ctx.Request
+  |> HttpRequest.toRequest
+  |> Request.toCommand
+  |> Option.map
+       (commandHandler
+        >> HttpResponse.fromCommandResponse
+        >> HttpResponse.applyToCtx ctx)
+  |> Option.defaultWith (HttpResponse.statusCode ctx StatusCode.NotFound) :> Task

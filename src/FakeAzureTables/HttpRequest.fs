@@ -1,3 +1,4 @@
+[<RequireQualifiedAccess>]
 module HttpRequest
 
 open System.IO
@@ -7,6 +8,11 @@ open System.Text
 open System.Buffers
 open Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 open Http
+open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.Http.Extensions
+
+let private toMethod m =
+  Enum.Parse(typeof<Method>, m, true) :?> Method
 
 type InvalidReason =
   | InvalidRoute of string
@@ -14,7 +20,7 @@ type InvalidReason =
   | InvalidMethod
   | Invalid of Exception
 
-let toReason (ex: Exception) =
+let private toReason (ex: Exception) =
   match ex with
   | :? Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException as ex when ex.Message.StartsWith
                                                                                      ("Unrecognized HTTP version") ->
@@ -97,3 +103,20 @@ let parse (input: string) =
 
     Result.Ok request
   with ex -> toReason ex |> Error
+
+let toRequest (request: HttpRequest): Request =
+  let request: Request =
+    { Method = request.Method |> toMethod
+      Path = request.Path.Value
+      Body = request.BodyString
+      Headers =
+        request.Headers
+        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
+        |> dict
+      Query =
+        request.Query
+        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
+        |> dict
+      Uri = request.GetDisplayUrl() |> Uri }
+
+  request

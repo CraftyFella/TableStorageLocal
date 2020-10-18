@@ -4,7 +4,6 @@ open Microsoft.AspNetCore.Http
 open System.IO
 open System.Collections.Generic
 open System
-open Microsoft.AspNetCore.Http.Extensions
 open System.Text
 
 type HttpRequest with
@@ -44,6 +43,7 @@ type StatusCode =
   | BadRequest = 400
   | NotFound = 404
   | Conflict = 409
+  | PreconditionFailed = 412
   | InternalServerError = 500
 
 module StatusCode =
@@ -55,14 +55,26 @@ module StatusCode =
     | StatusCode.BadRequest -> "HTTP/1.1 400 Bad Request"
     | StatusCode.NotFound -> "HTTP/1.1 404 Not Found"
     | StatusCode.Conflict -> "HTTP/1.1 409 Conflict"
+    | StatusCode.PreconditionFailed -> "HTTP/1.1 412 Precondition Failed"
     | StatusCode.InternalServerError -> "HTTP/1.1 500 Internal Server Error"
-    | x -> failwithf "Unknown status code %A" x
+
+[<RequireQualifiedAccess>]
+type ContentType = 
+  | ApplicationJson
+  | MultipartMixedBatch of string
+
+module ContentType =
+  let toRaw =
+    function
+    | ContentType.ApplicationJson -> "application/json; charset=utf-8"
+    | ContentType.MultipartMixedBatch batchId -> sprintf "multipart/mixed; boundary=batchresponse_%s" batchId
 
 [<RequireQualifiedAccess>]
 type Response =
   { StatusCode: StatusCode
+    ContentType: ContentType option
     Headers: IDictionary<string, string>
-    Body: string }
+    Body: string option }
 
 module Response =
   let toRaw (response: Response) =
@@ -78,25 +90,6 @@ module Response =
     sb.AppendLine() |> ignore
     sb.Append headers |> ignore
     sb.AppendLine() |> ignore
-    if response.Body <> null then sb.Append response.Body |> ignore
+    response.Body |> Option.iter (sb.Append >> ignore)
     let raw = sb.ToString()
     raw
-
-let toMethod m =
-  Enum.Parse(typeof<Method>, m, true) :?> Method
-
-let toRequest (request: HttpRequest): Request =
-  let request: Request =
-    { Method = request.Method |> toMethod
-      Path = request.Path.Value
-      Body = request.BodyString
-      Headers =
-        request.Headers
-        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
-        |> dict
-      Query =
-        request.Query
-        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
-        |> dict
-      Uri = request.GetDisplayUrl() |> Uri }
-  request
