@@ -6,12 +6,39 @@ open FSharp.Control.Tasks
 open System.Threading.Tasks
 open System.Text.RegularExpressions
 open Domain
-open Microsoft.Extensions.Primitives
-open Newtonsoft.Json
 open Http
 
+module Result =
+  let isOk result =
+    match result with
+    | Ok _ -> true
+    | _ -> false
+
+  let valueOf result =
+    match result with
+    | Ok v -> v
+    | _ -> failwithf "shouldn't get here"
+
+module Option =
+
+  let valueOf result =
+    match result with
+    | Some v -> v
+    | _ -> failwithf "shouldn't get here"
+
+module WriteCommand =
+
+  let isWriteCommand command =
+    match command with
+    | Write c -> true
+    | _ -> false
+
+  let valueOf command =
+    match command with
+    | Write c -> c
+    | _ -> failwithf "shouldn't get here"
+
 module private Request =
-  open Http
 
   let (|Regex|_|) pattern input =
     match Regex.Match(input, pattern) with
@@ -24,16 +51,16 @@ module private Request =
     | _ -> None
 
   let private (|QueryRequest|_|) (request: Request) =
-    match request.Path with
-    | Regex "^\/devstoreaccount1\/(\w+)$" [ tableName ] ->
+    match request.Method, request.Path with
+    | Method.Get, Regex "^\/devstoreaccount1\/(\w+)$" [ tableName ] ->
         match request.Query.ContainsKey("$filter") with
         | true -> Some(tableName, request.Query.Item "$filter" |> Array.tryHead)
         | false -> Some(tableName, None)
     | _ -> None
 
   let private (|CreateTableRequest|_|) (request: Request) =
-    match request.Path with
-    | "/devstoreaccount1/Tables()" ->
+    match request.Method, request.Path with
+    | Method.Post, "/devstoreaccount1/Tables()" ->
         let jObject = JObject.Parse request.Body
         match jObject.TryGetValue "TableName" with
         | true, tableName -> Some(string tableName)
@@ -59,56 +86,26 @@ module private Request =
 
   let private (|ReplaceRequest|MergeRequest|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|) (request: Request) =
     match request.Path with
-    | Regex "^\/devstoreaccount1\/(\w+)\(PartitionKey='(.+)',RowKey='(.+)'\)$" [ tableName; p; r ] ->
+    | Regex "^\/devstoreaccount1\/(\w+)\(PartitionKey='(.+)',RowKey='(.+)'\)$" [ tableName; partitionKey; rowKey ] ->
         match request.Method with
         | Method.Post ->
             let jObject = JObject.Parse request.Body
             match request.Headers.TryGetValue("If-Match") with
-            | true, [| etag |] -> MergeRequest(tableName, p, r, etag |> ETag.parse, jObject)
-            | _ -> InsertOrMergeRequest(tableName, p, r, jObject)
+            | true, [| etag |] -> MergeRequest(tableName, partitionKey, rowKey, etag |> ETag.parse, jObject)
+            | _ -> InsertOrMergeRequest(tableName, partitionKey, rowKey, jObject)
         | Method.Put ->
             let jObject = JObject.Parse request.Body
             match request.Headers.TryGetValue("If-Match") with
-            | true, [| etag |] -> ReplaceRequest(tableName, p, r, etag |> ETag.parse, jObject)
-            | _ -> InsertOrReplaceRequest(tableName, p, r, jObject)
-        | Method.Get -> GetRequest(tableName, p, r)
-        | Method.Delete -> DeleteRequest(tableName, p, r)
+            | true, [| etag |] -> ReplaceRequest(tableName, partitionKey, rowKey, etag |> ETag.parse, jObject)
+            | _ -> InsertOrReplaceRequest(tableName, partitionKey, rowKey, jObject)
+        | Method.Get -> GetRequest(tableName, partitionKey, rowKey)
+        | Method.Delete -> DeleteRequest(tableName, partitionKey, rowKey)
         | _ -> NotFoundRequest
     | _ -> NotFoundRequest
 
-  module Result =
-    let isOk result =
-      match result with
-      | Ok _ -> true
-      | _ -> false
-
-    let valueOf result =
-      match result with
-      | Ok v -> v
-      | _ -> failwithf "shouldn't get here"
-
-  module Option =
-
-    let valueOf result =
-      match result with
-      | Some v -> v
-      | _ -> failwithf "shouldn't get here"
-
-  module WriteCommand =
-
-    let isWriteCommand command =
-      match command with
-      | Write c -> true
-      | _ -> false
-
-    let valueOf command =
-      match command with
-      | Write c -> c
-      | _ -> failwithf "shouldn't get here"
-
   let private (|BatchRequest|_|) (request: Request) =
-    match request.Path with
-    | "/devstoreaccount1/$batch" ->
+    match request.Method, request.Path with
+    | Method.Post, "/devstoreaccount1/$batch" ->
         match (request.Headers.Item "Content-Type")
               |> Array.head with
         | Regex "boundary=(.+)$" [ boundary ] ->
