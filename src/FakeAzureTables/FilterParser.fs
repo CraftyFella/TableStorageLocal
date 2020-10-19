@@ -22,42 +22,40 @@ module private Parser =
 
       ptrue <|> pfalse
 
-    let numberFormat =     NumberLiteralOptions.AllowMinusSign
-                           ||| NumberLiteralOptions.AllowFraction
-                           ||| NumberLiteralOptions.AllowExponent
-                           ||| NumberLiteralOptions.AllowHexadecimal
-                           ||| NumberLiteralOptions.AllowSuffix
+    let numberFormat =
+      NumberLiteralOptions.AllowMinusSign
+      ||| NumberLiteralOptions.AllowFraction
+      ||| NumberLiteralOptions.AllowExponent
+      ||| NumberLiteralOptions.AllowHexadecimal
+      ||| NumberLiteralOptions.AllowSuffix
+
     let numberParser =
       let parser = numberLiteral numberFormat "number"
       fun stream ->
         let reply = parser stream
         if reply.Status = Ok then
-            let nl = reply.Result // the parsed NumberLiteral
-            if nl.SuffixLength = 0
-               || (   nl.IsInteger
-                   && nl.SuffixLength = 1 && nl.SuffixChar1 = 'L')
-            then
-                try
-                    let result = if nl.IsInteger then
-                                     if nl.SuffixLength = 0 then
-                                         FieldValue.Int (int nl.String)
-                                     else
-                                         FieldValue.Long (int64 nl.String)
-                                 else
-                                     if nl.IsHexadecimal then
-                                         FieldValue.Double (floatOfHexString nl.String)
-                                     else
-                                         FieldValue.Double (float nl.String)
-                    Reply(result)
-                with
-                | :? System.OverflowException as e ->
-                    stream.Skip(-nl.String.Length)
-                    Reply(FatalError, messageError e.Message)
-            else
-                stream.Skip(-nl.SuffixLength)
-                Reply(Error, messageError "invalid number suffix")
+          let nl = reply.Result // the parsed NumberLiteral
+          if nl.SuffixLength = 0
+             || (nl.IsInteger
+                 && nl.SuffixLength = 1
+                 && nl.SuffixChar1 = 'L') then
+            try
+              let result =
+                if nl.IsInteger
+                then if nl.SuffixLength = 0 then FieldValue.Int(int nl.String) else FieldValue.Long(int64 nl.String)
+                else if nl.IsHexadecimal
+                then FieldValue.Double(floatOfHexString nl.String)
+                else FieldValue.Double(float nl.String)
+
+              Reply(result)
+            with :? System.OverflowException as e ->
+              stream.Skip(-nl.String.Length)
+              Reply(FatalError, messageError e.Message)
+          else
+            stream.Skip(-nl.SuffixLength)
+            Reply(Error, messageError "invalid number suffix")
         else // reconstruct error reply
-            Reply(reply.Status, reply.Error)
+          Reply(reply.Status, reply.Error)
 
     let dateParser =
       let prefix = pstring "datetime"
@@ -87,7 +85,7 @@ module private Parser =
       let quote = pchar '\''
       between quote quote manyCharsNotSingleQuote
       |>> (FieldValue.String)
-      
+
     let parser =
       guidParser
       <|> dateParser
@@ -104,14 +102,6 @@ module private Parser =
       ("lt", QueryComparison.LessThan)
       ("le", QueryComparison.LessThanOrEqual) ]
     |> List.map (fun (toMatch, qc) -> stringReturn toMatch qc <?> (sprintf "%O" qc))
-    |> choice
-
-  let tableOperatorParser =
-    [ ("or", TableOperators.Or)
-      ("and", TableOperators.And) ]
-    |> List.map (fun (toMatch, tableOp) ->
-         stringReturn toMatch tableOp
-         <?> (sprintf "%O" tableOp))
     |> choice
 
   module Filter =
@@ -131,16 +121,14 @@ module private Parser =
       .>>. filterValue
       |>> (fun ((n, qc), fv) -> Filter.Property(n, qc, fv))
 
-    let parser, parserRef = createParserForwardedToRef ()
+    //let parser, parserRef = createParserForwardedToRef ()
+    let ws = spaces
+    let strws s = pstring s >>. ws
 
-    let combinedParser =
-      let open' = pchar '('
-      let close = pchar ')'
+    let opp =
+      new OperatorPrecedenceParser<Filter, unit, unit>()
 
-      let left = (between open' close parser) .>> spaces
-      let right = spaces >>. (between open' close parser)
-      (left .>>. tableOperatorParser .>>. right)
-      |>> (fun ((a, tableOp), b) -> Filter.Combined(a, tableOp, b))
+    let expr = opp.ExpressionParser
 
     let partitionKeyParser =
       let name = pstringCI "partitionKey"
@@ -176,15 +164,29 @@ module private Parser =
       .>>. filterValue
       |>> (fun (qc, (FieldValue.String (fv))) -> Filter.RowKey(qc, fv))
 
-    do parserRef
-       := choice [ partitionKeyParser
-                   rowKeyParser
-                   propertyParser
-                   combinedParser ]
 
-    let filter = spaces >>. parser .>> spaces .>> eof
+    opp.AddOperator
+      (InfixOperator
+        ("and", spaces, 1, Associativity.Left, (fun left right -> Filter.Combined(left, TableOperators.And, right))))
+
+    opp.AddOperator
+      (InfixOperator
+        ("or", spaces, 2, Associativity.Left, (fun left right -> Filter.Combined(left, TableOperators.Or, right))))
+
+    let all =
+      choice [ partitionKeyParser
+               rowKeyParser
+               propertyParser ]
+
+    let term =
+      (all .>> ws)
+      <|> between (strws "(") (strws ")") expr
+
+    opp.TermParser <- term
+
+    let filter = spaces >>. expr .>> spaces .>> eof
 
 let parse query =
-  match run Filter.parser query with
+  match run Filter.filter query with
   | Success (result, _, _) -> result |> Result.Ok
   | Failure (_, error, _) -> error.ToString() |> Result.Error

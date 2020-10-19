@@ -22,7 +22,8 @@ let filterParserTests =
       test "partition key with dashes" {
 
         let actual =
-          "PartitionKey eq 'a70cf19c-b076-40bb-b3c3-682b74981ba6'" |> FilterParser.parse
+          "PartitionKey eq 'a70cf19c-b076-40bb-b3c3-682b74981ba6'"
+          |> FilterParser.parse
 
         let expected =
           Ok(Filter.PartitionKey(QueryComparison.Equal, "a70cf19c-b076-40bb-b3c3-682b74981ba6"))
@@ -174,6 +175,22 @@ let filterParserTests =
 
         Expect.equal left expected "unexpected result"
       }
+
+      test "combined (And) no brackets" {
+
+        let actual =
+          "PartitionKey eq '1' and Name eq 'Dave'"
+          |> FilterParser.parse
+
+        let expected =
+          Ok
+            (Filter.Combined
+              (Filter.PartitionKey(QueryComparison.Equal, "1"),
+               TableOperators.And,
+               Filter.Property("Name", QueryComparison.Equal, FieldValue.String "Dave")))
+
+        Expect.equal actual expected "unexpected result"
+      } 
 
       test "combined (Or))" {
 
