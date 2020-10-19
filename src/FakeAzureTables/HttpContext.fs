@@ -60,6 +60,7 @@ module private Request =
 
   let private (|CreateTableRequest|_|) (request: Request) =
     match request.Method, request.Path with
+    | Method.Post, "/devstoreaccount1/Tables"
     | Method.Post, "/devstoreaccount1/Tables()" ->
         let jObject = JObject.Parse request.Body
         match jObject.TryGetValue "TableName" with
@@ -74,7 +75,8 @@ module private Request =
 
   let private (|InsertRequest|_|) (request: Request) =
     match request.Method, request.Path with
-    | Method.Post, Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName ] ->
+    | Method.Post, Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName; ]
+    | Method.Post, Regex "^\/devstoreaccount1\/(\w+)$" [ tableName; ] ->
         let jObject = JObject.Parse request.Body
         match jObject.TryGetValue "PartitionKey" with
         | true, p ->
@@ -218,8 +220,6 @@ let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) 
       printfn "Ouch %A" ex
       ctx.Response.StatusCode <- 500
   } :> Task
-
-
 
 let httpHandler commandHandler (ctx: HttpContext) =
   ctx.Request
