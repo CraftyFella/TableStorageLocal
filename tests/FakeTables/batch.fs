@@ -4,7 +4,34 @@ open Expecto
 open Microsoft.Azure.Cosmos.Table
 
 [<Tests>]
-let batchTests =
+let batchDeleteTests =
+  testList
+    "batch delete"
+    [ test "delete existing row is accepted" {
+        let table = createFakeTables ()
+
+        let entity = DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
+
+        entity
+        |> TableOperation.Insert
+        |> table.Execute
+        |> ignore
+
+        let batch = TableBatchOperation()
+
+        entity
+        |> TableOperation.Delete
+        |> batch.Add
+
+        let actual = batch |> table.ExecuteBatch
+
+        Expect.equal (actual |> Seq.length) 1 "unexpected result"
+        for batchItem in actual do
+          Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
+      } ]
+
+[<Tests>]
+let batchInsertTests =
   testList
     "batch insert"
     [ test "row doesn't exist is accepted" {
@@ -12,15 +39,14 @@ let batchTests =
         let batch = TableBatchOperation()
 
         createEntityWithString "pk2" "5" "thing"
-          |> TableOperation.Insert
-          |> batch.Add
+        |> TableOperation.Insert
+        |> batch.Add
 
         createEntityWithString "pk2" "6" "thing"
-          |> TableOperation.Insert
-          |> batch.Add
+        |> TableOperation.Insert
+        |> batch.Add
 
-        let actual =
-          batch |> table.ExecuteBatch
+        let actual = batch |> table.ExecuteBatch
 
         Expect.equal (actual |> Seq.length) 2 "unexpected result"
         for batchItem in actual do
@@ -33,11 +59,10 @@ let batchTests =
         let batch = TableBatchOperation()
 
         createEntityWithString "pk" "1" "rowValue"
-          |> TableOperation.Insert
-          |> batch.Add
+        |> TableOperation.Insert
+        |> batch.Add
 
-        let actual =
-          batch |> table.ExecuteBatch
+        let actual = batch |> table.ExecuteBatch
 
         Expect.equal (actual |> Seq.length) 1 "unexpected result"
         for batchItem in actual do
@@ -45,10 +70,9 @@ let batchTests =
 
         let batch = TableBatchOperation()
         createEntityWithString "pk" "2" "rowValue"
-          |> TableOperation.Insert
-          |> batch.Add
-        let actual =
-          batch |> table.ExecuteBatch
+        |> TableOperation.Insert
+        |> batch.Add
+        let actual = batch |> table.ExecuteBatch
 
         Expect.equal (actual |> Seq.length) 1 "unexpected result"
         for batchItem in actual do
@@ -61,15 +85,15 @@ let batchTests =
         let batch = TableBatchOperation()
 
         createEntityWithString "pk" "1" "rowValue"
-          |> TableOperation.Insert
-          |> batch.Add
+        |> TableOperation.Insert
+        |> batch.Add
 
         batch |> table.ExecuteBatch |> ignore
 
         let batch = TableBatchOperation()
         createEntityWithString "pk" "2" "rowValue"
-          |> TableOperation.Insert
-          |> batch.Add
+        |> TableOperation.Insert
+        |> batch.Add
 
         batch |> table.ExecuteBatch |> ignore
 

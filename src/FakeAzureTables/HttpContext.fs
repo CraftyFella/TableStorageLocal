@@ -112,10 +112,10 @@ module private Request =
               |> Array.head with
         | Regex "boundary=(.+)$" [ boundary ] ->
             let rawRequests =
-              Regex.Split(request.Body, "--changeset_.+$", RegexOptions.Multiline)
+              Regex.Split(request.Body, "--changeset_.+$", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
               |> Array.filter (fun x -> not (x.Contains boundary))
               |> Array.map (fun x ->
-                   Regex.Split(x, "^Content-Transfer-Encoding: binary", RegexOptions.Multiline)
+                   Regex.Split(x, "^Content-Transfer-Encoding: binary", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
                    |> Array.skip 1
                    |> Array.head)
 

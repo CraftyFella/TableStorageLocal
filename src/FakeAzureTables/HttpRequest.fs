@@ -95,7 +95,7 @@ let parse (input: string) =
 
     let request: Request =
       { Method = app.Method
-        Path = uri.AbsolutePath
+        Path = uri.AbsolutePath |> Net.WebUtility.UrlDecode
         Body = body
         Headers = app.Headers
         Query = app.Query
@@ -107,7 +107,7 @@ let parse (input: string) =
 let toRequest (request: HttpRequest): Request =
   let request: Request =
     { Method = request.Method |> toMethod
-      Path = request.Path.Value
+      Path = request.Path.Value |> Net.WebUtility.UrlDecode
       Body = request.BodyString
       Headers =
         request.Headers
