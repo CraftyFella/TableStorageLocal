@@ -8,47 +8,7 @@ open System.Text.RegularExpressions
 open Domain
 open Http
 
-module Result =
-  let isOk result =
-    match result with
-    | Ok _ -> true
-    | _ -> false
-
-  let valueOf result =
-    match result with
-    | Ok v -> v
-    | _ -> failwithf "shouldn't get here"
-
-module Option =
-
-  let valueOf result =
-    match result with
-    | Some v -> v
-    | _ -> failwithf "shouldn't get here"
-
-module WriteCommand =
-
-  let isWriteCommand command =
-    match command with
-    | Write c -> true
-    | _ -> false
-
-  let valueOf command =
-    match command with
-    | Write c -> c
-    | _ -> failwithf "shouldn't get here"
-
 module private Request =
-
-  let (|Regex|_|) pattern input =
-    match Regex.Match(input, pattern) with
-    | m when m.Success ->
-        m.Groups
-        |> Seq.skip 1
-        |> Seq.map (fun g -> g.Value)
-        |> Seq.toList
-        |> Some
-    | _ -> None
 
   let private (|QueryRequest|_|) (request: Request) =
     match request.Method, request.Path with
@@ -75,8 +35,8 @@ module private Request =
 
   let private (|InsertRequest|_|) (request: Request) =
     match request.Method, request.Path with
-    | Method.Post, Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName; ]
-    | Method.Post, Regex "^\/devstoreaccount1\/(\w+)$" [ tableName; ] ->
+    | Method.Post, Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName ]
+    | Method.Post, Regex "^\/devstoreaccount1\/(\w+)$" [ tableName ] ->
         let jObject = JObject.Parse request.Body
         match jObject.TryGetValue "PartitionKey" with
         | true, p ->
@@ -92,12 +52,12 @@ module private Request =
         match request.Method with
         | Method.Post ->
             let jObject = JObject.Parse request.Body
-            match request.Headers.TryGetValue("If-Match") with
+            match request.Headers.TryGetValue("if-match") with
             | true, [| etag |] -> MergeRequest(tableName, partitionKey, rowKey, etag |> ETag.parse, jObject)
             | _ -> InsertOrMergeRequest(tableName, partitionKey, rowKey, jObject)
         | Method.Put ->
             let jObject = JObject.Parse request.Body
-            match request.Headers.TryGetValue("If-Match") with
+            match request.Headers.TryGetValue("if-match") with
             | true, [| etag |] -> ReplaceRequest(tableName, partitionKey, rowKey, etag |> ETag.parse, jObject)
             | _ -> InsertOrReplaceRequest(tableName, partitionKey, rowKey, jObject)
         | Method.Get -> GetRequest(tableName, partitionKey, rowKey)
@@ -107,27 +67,7 @@ module private Request =
 
   let private (|BatchRequest|_|) (request: Request) =
     match request.Method, request.Path with
-    | Method.Post, "/devstoreaccount1/$batch" ->
-        match (request.Headers.Item "Content-Type")
-              |> Array.head with
-        | Regex "boundary=(.+)$" [ boundary ] ->
-            let rawRequests =
-              Regex.Split(request.Body, "--changeset_.+$", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
-              |> Array.filter (fun x -> not (x.Contains boundary))
-              |> Array.map (fun x ->
-                   Regex.Split(x, "^Content-Transfer-Encoding: binary", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
-                   |> Array.skip 1
-                   |> Array.head)
-
-            let httpRequests =
-              rawRequests
-              |> Array.map (HttpRequest.parse)
-              |> List.ofArray
-
-            match httpRequests |> List.forall Result.isOk with
-            | true -> httpRequests |> List.map Result.valueOf |> Some
-            | false -> None
-        | _ -> None
+    | Method.Post, "/devstoreaccount1/$batch" -> HttpRequest.tryExtractBatches request
     | _ -> None
 
   let rec toCommand =

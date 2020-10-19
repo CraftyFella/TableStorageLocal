@@ -3,14 +3,15 @@ module HttpRequestParserTests
 open Expecto
 open System.Text.RegularExpressions
 open HttpContext
+open Domain
 
 [<Tests>]
 let httpRequestParserTests =
   testList
     "HttpRequestParserTests"
     [ test "delete record request from sdk" {
-        
-        let request = """POST /devstoreaccount1/$batch HTTP/1.1
+
+        let http = """POST /devstoreaccount1/$batch HTTP/1.1
 Host: localhost.charlesproxy.com:51031
 Accept-Charset: UTF-8
 MaxDataServiceVersion: 3.0;NetFx
@@ -40,27 +41,21 @@ If-Match: W/"datetime'2020-10-19T11:03:15Z'"
 --changeset_2eac933c-14a3-4584-8805-b048af7bccbf--
 --batch_1ca42986-ce81-4222-bfc7-75cf8649d46f--"""
 
-        let boundary = "batch_1ca42986-ce81-4222-bfc7-75cf8649d46f"
+        let result = HttpRequest.parse http
+        Expect.isOk result "expected valid http request"
 
-        let rawRequests =
-          Regex.Split(request, "--changeset_.+$", RegexOptions.Multiline)
-          |> Array.filter (fun x -> not (x.Contains boundary))
-          |> Array.map (fun x ->
-               Regex.Split(x, "^Content-Transfer-Encoding: binary", RegexOptions.Multiline)
-               |> Array.skip 1
-               |> Array.head)
+        let batches =
+          result
+          |> Result.valueOf
+          |> HttpRequest.tryExtractBatches
 
-        let httpRequests =
-          rawRequests
-          |> Array.map (HttpRequest.parse)
-          |> List.ofArray
-
-        Expect.isTrue (httpRequests |> List.forall Result.isOk) "unexpected true"
+        Expect.isSome batches "unexpected result"
+        Expect.equal (batches |> Option.valueOf |> List.length) 1 "unexpected length"
       }
-      
+
       test "delete record request from storage explorer" {
-        
-        let request = """POST /devstoreaccount1/$batch HTTP/1.1
+
+        let http = """POST /devstoreaccount1/$batch HTTP/1.1
 content-type: multipart/mixed; charset="utf-8"; boundary=batch_07ce4b5d1d928c18c57e034fdfc05045
 dataserviceversion: 3.0;
 maxdataserviceversion: 3.0;NetFx
@@ -91,20 +86,14 @@ maxdataserviceversion: 3.0;NetFx
 --changeset_07ce4b5d1d928c18c57e034fdfc05045--
 --batch_07ce4b5d1d928c18c57e034fdfc05045--"""
 
-        let boundary = "batch_07ce4b5d1d928c18c57e034fdfc05045"
+        let result = HttpRequest.parse http
+        Expect.isOk result "expected valid http request"
 
-        let rawRequests =
-          Regex.Split(request, "--changeset_.+$", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
-          |> Array.filter (fun x -> not (x.Contains boundary))
-          |> Array.map (fun x ->
-               Regex.Split(x, "^Content-Transfer-Encoding: binary", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
-               |> Array.skip 1
-               |> Array.head)
+        let batches =
+          result
+          |> Result.valueOf
+          |> HttpRequest.tryExtractBatches
 
-        let httpRequests =
-          rawRequests
-          |> Array.map (HttpRequest.parse)
-          |> List.ofArray
-
-        Expect.isTrue (httpRequests |> List.forall Result.isOk) "unexpected true"
-      }]
+        Expect.isSome batches "unexpected result"
+        Expect.equal (batches |> Option.valueOf |> List.length) 1 "unexpected length"
+      } ]

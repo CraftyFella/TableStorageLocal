@@ -1,7 +1,6 @@
 [<RequireQualifiedAccess>]
 module HttpRequest
 
-open System.IO
 open System.Collections.Generic
 open System
 open System.Text
@@ -10,6 +9,8 @@ open Microsoft.AspNetCore.Server.Kestrel.Core.Internal.Http
 open Http
 open Microsoft.AspNetCore.Http
 open Microsoft.AspNetCore.Http.Extensions
+open System.Text.RegularExpressions
+open Domain
 
 let private toMethod m =
   Enum.Parse(typeof<Method>, m, true) :?> Method
@@ -61,7 +62,7 @@ type private ParserCallbacks() =
   interface IHttpHeadersHandler with
     member this.OnHeader(name: Span<byte>, value: Span<byte>) =
 
-      _headers.Add(toString (name), [| toString (value) |])
+      _headers.Add(toString(name).ToLower(), [| toString(value) |])
 
   member __.Headers = _headers
   member __.Method = _method
@@ -95,7 +96,10 @@ let parse (input: string) =
 
     let request: Request =
       { Method = app.Method
-        Path = uri.AbsolutePath |> Net.WebUtility.UrlDecode
+        Path =
+          if uri.IsAbsoluteUri
+          then uri.AbsolutePath
+          else uri.OriginalString |> Net.WebUtility.UrlDecode
         Body = body
         Headers = app.Headers
         Query = app.Query
@@ -104,6 +108,26 @@ let parse (input: string) =
     Result.Ok request
   with ex -> toReason ex |> Error
 
+let tryExtractBatches (request: Request): Request list option =
+  match (request.Headers.Item "content-type")
+        |> Array.head with
+  | Regex "boundary=(.+)$" [ boundary ] ->
+      let rawRequests =
+        Regex.Split(request.Body, "--changeset_.+$", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
+        |> Array.filter (fun x -> not (x.Contains boundary))
+        |> Array.map (fun x ->
+             Regex.Split(x, "^content-transfer-encoding: binary", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
+             |> Array.skip 1
+             |> Array.head)
+
+      let httpRequests =
+        rawRequests |> Array.map (parse) |> List.ofArray
+
+      match httpRequests |> List.forall Result.isOk with
+      | true -> httpRequests |> List.map Result.valueOf |> Some
+      | false -> None
+  | _ -> None
+
 let toRequest (request: HttpRequest): Request =
   let request: Request =
     { Method = request.Method |> toMethod
@@ -111,7 +135,7 @@ let toRequest (request: HttpRequest): Request =
       Body = request.BodyString
       Headers =
         request.Headers
-        |> Seq.map (fun (KeyValue (k, v)) -> k, v.ToArray())
+        |> Seq.map (fun (KeyValue (k, v)) -> k.ToLower(), v.ToArray())
         |> dict
       Query =
         request.Query

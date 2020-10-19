@@ -2,6 +2,7 @@ module Domain
 
 open System
 open System.Collections.Generic
+open System.Text.RegularExpressions
 
 [<RequireQualifiedAccess>]
 type QueryComparison =
@@ -230,3 +231,43 @@ module TableRow =
     row.Fields.TryAdd("Timestamp", FieldValue.Date etag)
     |> ignore
     row
+
+let (|Regex|_|) pattern input =
+  match Regex.Match(input, pattern) with
+  | m when m.Success ->
+      m.Groups
+      |> Seq.skip 1
+      |> Seq.map (fun g -> g.Value)
+      |> Seq.toList
+      |> Some
+  | _ -> None
+
+module Result =
+  let isOk result =
+    match result with
+    | Ok _ -> true
+    | _ -> false
+
+  let valueOf result =
+    match result with
+    | Ok v -> v
+    | _ -> failwithf "shouldn't get here"
+
+module Option =
+
+  let valueOf result =
+    match result with
+    | Some v -> v
+    | _ -> failwithf "shouldn't get here"
+
+module WriteCommand =
+
+  let isWriteCommand command =
+    match command with
+    | Write c -> true
+    | _ -> false
+
+  let valueOf command =
+    match command with
+    | Write c -> c
+    | _ -> failwithf "shouldn't get here"
