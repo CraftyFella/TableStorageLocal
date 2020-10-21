@@ -4,6 +4,37 @@ open Expecto
 open Microsoft.Azure.Cosmos.Table
 
 [<Tests>]
+let batchMergeTests =
+  testList
+    "batch merge"
+    [ test "merge existing row is accepted" {
+
+
+        let table = createFakeTables ()
+
+        let entity = DynamicTableEntity("pk2", "r2k", null, stringFieldType "Inserted Value")
+
+        entity
+        |> TableOperation.Insert
+        |> table.Execute
+        |> ignore
+
+        let batch = TableBatchOperation()
+
+        let mergedEntity = DynamicTableEntity("pk2", "r2k", entity.ETag, stringFieldType "Updated Value")
+
+        mergedEntity
+        |> TableOperation.Merge
+        |> batch.Add
+
+        let actual = batch |> table.ExecuteBatch
+
+        Expect.equal (actual |> Seq.length) 1 "unexpected result"
+        for batchItem in actual do
+          Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
+      } ]
+
+[<Tests>]
 let batchDeleteTests =
   testList
     "batch delete"

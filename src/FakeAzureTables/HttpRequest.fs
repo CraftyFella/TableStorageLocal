@@ -62,7 +62,7 @@ type private ParserCallbacks() =
   interface IHttpHeadersHandler with
     member this.OnHeader(name: Span<byte>, value: Span<byte>) =
 
-      _headers.Add(toString(name).ToLower(), [| toString(value) |])
+      _headers.Add(toString(name).ToLower(), [| toString (value) |])
 
   member __.Headers = _headers
   member __.Method = _method
@@ -70,11 +70,20 @@ type private ParserCallbacks() =
   member __.Uri = _uri
   member __.Query = _query
 
+
+let private normalise (input: string) =
+  let normalizedLineEndings =
+    input.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n").Trim()
+
+  if ("MERGE".Equals(normalizedLineEndings.Substring(0, 5)))
+  then sprintf "%s%s" "POST" (normalizedLineEndings.Substring(5))
+  else normalizedLineEndings
+
 let parse (input: string) =
   try
 
     let requestRaw =
-      Encoding.UTF8.GetBytes(input.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n").Trim())
+      input |> normalise |> Encoding.UTF8.GetBytes
 
     let mutable buffer = new ReadOnlySequence<byte>(requestRaw)
     let parser = new HttpParser<ParserCallbacks>()
