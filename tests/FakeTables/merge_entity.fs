@@ -1,8 +1,6 @@
 module merge_entity
 
 open Expecto
-open System
-open Host
 open Microsoft.Azure.Cosmos.Table
 
 
@@ -44,7 +42,26 @@ let mergeTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsT<Microsoft.Azure.Cosmos.Table.StorageException> run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.Message = "Precondition Failed") run  "expected exception"
+
+      }
+
+      test "row exists and wildcard (*) etag used is accepted" {
+        let table = createFakeTables ()
+
+        let wildcardEtag = "*"
+
+        let _ =
+          DynamicTableEntity("pk2", "r2k", null, stringFieldType "Inserted Value")
+          |> TableOperation.Insert
+          |> table.Execute
+
+        let actual =
+          DynamicTableEntity("pk2", "r2k", wildcardEtag, stringFieldType "Updated Value")
+          |> TableOperation.Merge
+          |> table.Execute
+
+        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
 
       }
 

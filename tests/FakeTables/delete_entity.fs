@@ -44,7 +44,7 @@ let deleteTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsT<Microsoft.Azure.Cosmos.Table.StorageException> run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.Message = "Conflict") run  "expected exception"
 
       }
       test "row exists and correct etag used is accepted" {
@@ -81,7 +81,7 @@ let deleteTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsT<Microsoft.Azure.Cosmos.Table.StorageException> run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.Message = "Precondition Failed") run  "expected exception"
 
       }
 

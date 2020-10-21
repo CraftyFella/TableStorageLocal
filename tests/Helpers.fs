@@ -6,6 +6,24 @@ open Microsoft.Azure.Cosmos.Table
 open System
 open System.Collections.Generic
 
+
+module Expect =
+  open Expecto
+  
+  [<RequiresExplicitTypeArguments>]
+  let throwsTWithPredicate<'texn when 'texn :> exn> predicate f message =
+    let thrown =
+      try
+        f ()
+        None
+      with e ->
+        Some e
+    match thrown with
+    | Some e when e.GetType() = typeof<'texn>  && predicate e -> ()
+    | Some e -> 
+      failtestf "%s. Expected f to throw an exn of type %s, and matching predicate. But one of type %s was thrown %A." message (typeof<'texn>.FullName) (e.GetType().FullName) e
+    | _ -> failtestf "%s. Expected f to throw." message
+
 type FakeTables with
   member __.Client =
     CloudStorageAccount.Parse(__.ConnectionString).CreateCloudTableClient()
