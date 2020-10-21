@@ -11,6 +11,7 @@ module private Parser =
   let manyLettersOrNumbers = many1Chars letterOrNumber
   let specialChars = many1Chars letterOrNumber
   let manyCharsNotSingleQuote = (many1Chars (noneOf [ '\'' ]))
+  let stringSpaces s = pstring s >>. spaces
 
   module FieldValue =
     let boolParser =
@@ -121,15 +122,6 @@ module private Parser =
       .>>. filterValue
       |>> (fun ((n, qc), fv) -> Filter.Property(n, qc, fv))
 
-    //let parser, parserRef = createParserForwardedToRef ()
-    let ws = spaces
-    let strws s = pstring s >>. ws
-
-    let opp =
-      new OperatorPrecedenceParser<Filter, unit, unit>()
-
-    let expr = opp.ExpressionParser
-
     let partitionKeyParser =
       let name = pstringCI "partitionKey"
       let nameAndSpaces = name .>> spaces <?> "Name"
@@ -165,6 +157,11 @@ module private Parser =
       |>> (fun (qc, (FieldValue.String (fv))) -> Filter.RowKey(qc, fv))
 
 
+    let opp =
+      new OperatorPrecedenceParser<Filter, unit, unit>()
+
+    let parser = opp.ExpressionParser
+
     opp.AddOperator
       (InfixOperator
         ("and", spaces, 1, Associativity.Left, (fun left right -> Filter.Combined(left, TableOperators.And, right))))
@@ -173,18 +170,18 @@ module private Parser =
       (InfixOperator
         ("or", spaces, 2, Associativity.Left, (fun left right -> Filter.Combined(left, TableOperators.Or, right))))
 
-    let all =
+    let nonCombineParsers =
       choice [ partitionKeyParser
                rowKeyParser
                propertyParser ]
 
-    let term =
-      (all .>> ws)
-      <|> between (strws "(") (strws ")") expr
+    let termParser =
+      (nonCombineParsers .>> spaces)
+      <|> between (stringSpaces "(") (stringSpaces ")") parser
 
-    opp.TermParser <- term
+    opp.TermParser <- termParser
 
-    let filter = spaces >>. expr .>> spaces .>> eof
+    let filter = spaces >>. parser .>> spaces .>> eof
 
 let parse query =
   match run Filter.filter query with
