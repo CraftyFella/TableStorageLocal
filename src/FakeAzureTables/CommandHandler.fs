@@ -22,6 +22,13 @@ let tableCommandHandler (db: ILiteDatabase) command =
       |> Seq.map (fun kvp -> kvp.Key)
       |> TableCommandResponse.TableList
 
+let (|ETagMatches|_|) (existingETag: ETag) (existingRow: TableRow option) =
+  match existingRow, existingETag with
+  | Some existingRow, ETag.Specific existingETag when (existingRow.ETag |> ETag.serialize) =
+                                                        (existingETag |> ETag.serialize) -> Some()
+  | Some _, ETag.All -> Some()
+  | _ -> None
+
 let writeCommandHandler (db: ILiteDatabase) command =
   match command with
   | InsertOrMerge (table, row) ->
@@ -87,19 +94,13 @@ let writeCommandHandler (db: ILiteDatabase) command =
       | _ -> WriteCommandResponse.Conflict EntityDoesntExist
   | Delete (table, existingETag, keys) ->
       let table = db.GetTable table
-
-      let performDelete () =
-        table.DeleteMany(keys |> TableKeys.toBsonExpression)
-        |> ignore
-        WriteCommandResponse.Ack(keys, Missing)
-
       match keys
             |> TableKeys.toBsonExpression
-            |> table.TryFindOne,
-            existingETag with
-      | Some existingRow, ETag.Specific existingETag when (existingRow.ETag |> ETag.serialize) =
-                                                            (existingETag |> ETag.serialize) -> performDelete ()
-      | Some _, ETag.All -> performDelete ()
+            |> table.TryFindOne with
+      | ETagMatches existingETag ->
+          table.DeleteMany(keys |> TableKeys.toBsonExpression)
+          |> ignore
+          WriteCommandResponse.Ack(keys, Missing)
       | _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
 
 let readCommandHandler (db: ILiteDatabase) command =
