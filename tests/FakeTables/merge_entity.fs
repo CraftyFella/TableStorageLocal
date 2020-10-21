@@ -18,12 +18,21 @@ let mergeTests =
 
         Expect.isNotNull (actual.Etag) "eTag is expected"
 
-        let actual =
+        Async.Sleep 1 |> Async.RunSynchronously
+
+        let actualMerge =
           DynamicTableEntity("pk2", "r2k", actual.Etag, stringFieldType "Updated Value")
           |> TableOperation.Merge
           |> table.Execute
+       
+        let actualRetrieve =
+          TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")
+          |> table.Execute
 
-        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+        Expect.isNotNull (actualMerge.Etag) "eTag is expected"
+        Expect.isNotNull (actualRetrieve.Etag) "eTag is expected"
+        Expect.equal (actualMerge.HttpStatusCode) 204 "unexpected result"
+        Expect.equal (actualMerge.Etag) (actualRetrieve.Etag) "unexpected etag"
       }
 
       test "row exists and old etag used is rejected" {
@@ -42,7 +51,8 @@ let mergeTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.Message = "Precondition Failed") run  "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
+          e.Message = "Precondition Failed") run "expected exception"
 
       }
 

@@ -75,7 +75,7 @@ type ETag =
 [<RequireQualifiedAccess>]
 module ETag =
   let serialize (input: DateTimeOffset) =
-    sprintf "W/\"datetime'%s'\"" (input.ToString("s") + "Z")
+    sprintf "W/\"datetime'%s'\"" (input.ToString("s") + input.ToString(".fffZ"))
 
   let create () = System.DateTimeOffset.UtcNow |> Specific
 
