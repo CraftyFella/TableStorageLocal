@@ -102,19 +102,9 @@ let readCommandHandler (db: ILiteDatabase) command =
             |> table.TryFindOne with
       | Some row -> GetResponse(row)
       | _ -> ReadCommandResponse.NotFoundResponse
-  | Query (table, filter) ->
+  | Query (table, filter, top) ->
       let table = db.GetTable table
-
-      let matchingRows =
-        match filter with
-        | None -> applyFilter table Filter.All
-        | Some filter ->
-            match parse filter with
-            | Ok filter -> applyFilter table filter
-            | Error error ->
-                printfn "Filter: %A;\nError: %A" filter error
-                Seq.empty
-
+      let matchingRows = applyFilter table filter top
       matchingRows |> Seq.toList |> QueryResponse
 
 let commandHandler (db: ILiteDatabase) command =

@@ -4,7 +4,7 @@ open Domain
 open LiteDB
 open Bson
 
-let rec applyFilter (col: ILiteCollection<TableRow>) filter =
+let rec applyFilter (col: ILiteCollection<TableRow>) filter limit =
 
   let queryComparisonExpressionBuilder field qc value =
     match qc with
@@ -26,10 +26,8 @@ let rec applyFilter (col: ILiteCollection<TableRow>) filter =
         match tableOperator with
         | TableOperators.And -> Query.And(leftExpression, rightExpression)
         | TableOperators.Or -> Query.Or(leftExpression, rightExpression)
-    | Filter.All -> null
+    | Filter.All ->
+        queryComparisonExpressionBuilder "$.Keys.PartitionKey" QueryComparison.NotEqual (FieldValue.String "--")
 
-  match filter with
-  | Filter.All -> col.FindAll()
-  | _ ->
-      let expression = filterExpressionBuilder filter
-      col.Find expression
+  let expression = filterExpressionBuilder filter
+  col.Find(expression, limit = limit)

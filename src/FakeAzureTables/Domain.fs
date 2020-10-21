@@ -102,7 +102,7 @@ type WriteCommand =
 
 type ReadCommand =
   | Get of Table: string * TableKeys
-  | Query of Table: string * Filter: string option
+  | Query of Table: string * Filter * Top: int
 
 type BatchCommand = { Commands: WriteCommand list }
 

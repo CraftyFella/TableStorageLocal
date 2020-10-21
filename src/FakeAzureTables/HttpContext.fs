@@ -4,18 +4,29 @@ open Newtonsoft.Json.Linq
 open Microsoft.AspNetCore.Http
 open FSharp.Control.Tasks
 open System.Threading.Tasks
-open System.Text.RegularExpressions
 open Domain
 open Http
 
 module private Request =
 
+  let private queryString (request: Request) (key: string) =
+    match request.Query.TryGetValue(key) with
+    | true, value -> value |> Array.tryHead
+    | _ -> None
+
   let private (|QueryRequest|_|) (request: Request) =
     match request.Method, request.Path with
     | Method.Get, Regex "^\/devstoreaccount1\/(\w+)$" [ tableName ] ->
-        match request.Query.ContainsKey("$filter") with
-        | true -> Some(tableName, request.Query.Item "$filter" |> Array.tryHead)
-        | false -> Some(tableName, None)
+        let qs = queryString request
+
+        let filter = qs "$filter"
+
+        let top =
+          qs "$top"
+          |> Option.map int
+          |> Option.defaultValue 1000
+
+        Some(tableName, filter, top)
     | _ -> None
 
   let private (|CreateTableRequest|_|) (request: Request) =
@@ -139,7 +150,15 @@ module private Request =
              RowKey = rowKey })
         |> Read
         |> Some
-    | QueryRequest request -> Query request |> Read |> Some
+    | QueryRequest (table, filter, top) ->
+        match filter with
+        | None -> Query(table, Filter.All, top) |> Read |> Some
+        | Some filter ->
+            match FilterParser.parse filter with
+            | Ok filter -> Query(table, filter, top) |> Read |> Some
+            | Error error ->
+                printfn "Filter: %A;\nError: %A" filter error
+                None
     | BatchRequest requests ->
         let commands = requests |> List.map (toCommand)
         match commands |> List.forall (Option.isSome) with
