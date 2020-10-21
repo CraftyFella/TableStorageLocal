@@ -47,6 +47,11 @@ type Filter =
   | Property of name: string * QueryComparison * FieldValue
   | Combined of Filter * TableOperators * Filter
 
+[<RequireQualifiedAccess>]
+type Select =
+  | All
+  | Fields of string list
+
 type TableFields = Dictionary<string, FieldValue>
 
 [<CLIMutable>]
@@ -102,7 +107,7 @@ type WriteCommand =
 
 type ReadCommand =
   | Get of Table: string * TableKeys
-  | Query of Table: string * Filter * Top: int
+  | Query of Table: string * Select * Filter * Top: int
 
 type BatchCommand = { Commands: WriteCommand list }
 

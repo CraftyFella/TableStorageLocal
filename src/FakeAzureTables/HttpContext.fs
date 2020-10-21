@@ -26,7 +26,9 @@ module private Request =
           |> Option.map int
           |> Option.defaultValue 1000
 
-        Some(tableName, filter, top)
+        let select = qs "$select"
+
+        Some(tableName, select, filter, top)
     | _ -> None
 
   let private (|CreateTableRequest|_|) (request: Request) =
@@ -150,12 +152,20 @@ module private Request =
              RowKey = rowKey })
         |> Read
         |> Some
-    | QueryRequest (table, filter, top) ->
+    | QueryRequest (table, select, filter, top) ->
+        let select =
+          select
+          |> Option.map (fun s -> s.Split(",") |> Seq.toList |> Select.Fields)
+          |> Option.defaultValue Select.All
+
         match filter with
-        | None -> Query(table, Filter.All, top) |> Read |> Some
+        | None ->
+            Query(table, select, Filter.All, top)
+            |> Read
+            |> Some
         | Some filter ->
             match FilterParser.parse filter with
-            | Ok filter -> Query(table, filter, top) |> Read |> Some
+            | Ok filter -> Query(table, select, filter, top) |> Read |> Some
             | Error error ->
                 printfn "Filter: %A;\nError: %A" filter error
                 None

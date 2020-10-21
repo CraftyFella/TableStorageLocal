@@ -314,8 +314,8 @@ let searchTests =
 
         Expect.equal (results |> Seq.length) 0 "unexpected length"
 
-      } 
-      
+      }
+
       test "top 1 with matching partition key" {
         let table = createFakeTables ()
 
@@ -339,7 +339,7 @@ let searchTests =
           TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
 
         let token = TableContinuationToken()
-        
+
         let results =
           table.ExecuteQuerySegmented(query, token)
 
@@ -356,4 +356,46 @@ let searchTests =
           for field in allFieldTypes () do
             Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
 
-      }]
+      }
+
+      test "top 1 only only StringField matching partition key" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "rk1"
+          createEntity "pk1" "rk2"
+          createEntity "pk2" "rk3"
+          createEntity "pk1" "rk4"
+          createEntity "pk1" "rk5" ]
+        |> List.iter insert
+
+        let filter =
+          TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
+
+        let query =
+          TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1).Select([ "StringField" ] |> ResizeArray)
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        let rowKeys =
+          results
+          |> Seq.map (fun r -> r.RowKey)
+          |> Seq.sort
+          |> Seq.toList
+
+        Expect.equal rowKeys [ "rk1" ] "unexpected row Keys"
+
+        for result in results do
+          Expect.isNotNull result.ETag "eTag is expected"
+          Expect.equal (result.Properties |> Seq.length) 1 "unexpected values"
+          Expect.equal (result.Properties.["StringField"].StringValue) "StringValue" "unexpected values"
+
+      } ]

@@ -6,6 +6,7 @@ open Domain
 open LiteDB
 open Bson
 open Database
+open System.Collections.Generic
 
 let tableCommandHandler (db: ILiteDatabase) command =
   match command with
@@ -93,6 +94,20 @@ let writeCommandHandler (db: ILiteDatabase) command =
       | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
       | _ -> WriteCommandResponse.Conflict EntityDoesntExist
 
+let applySelect fields (tableRows: TableRow seq) =
+  match fields with
+  | Select.All -> tableRows
+  | Select.Fields fields ->
+      tableRows
+      |> Seq.map (fun f ->
+
+           let filteredFields =
+             f.Fields
+             |> Seq.filter (fun kvp -> fields |> List.contains kvp.Key)
+             |> Dictionary
+
+           { f with Fields = filteredFields })
+
 let readCommandHandler (db: ILiteDatabase) command =
   match command with
   | Get (table, keys) ->
@@ -102,10 +117,12 @@ let readCommandHandler (db: ILiteDatabase) command =
             |> table.TryFindOne with
       | Some row -> GetResponse(row)
       | _ -> ReadCommandResponse.NotFoundResponse
-  | Query (table, filter, top) ->
+  | Query (table, select, filter, top) ->
       let table = db.GetTable table
-      let matchingRows = applyFilter table filter top
-      matchingRows |> Seq.toList |> QueryResponse
+      applyFilter table filter top
+      |> applySelect select
+      |> Seq.toList
+      |> QueryResponse
 
 let commandHandler (db: ILiteDatabase) command =
   let tableCommandHandler = tableCommandHandler db
