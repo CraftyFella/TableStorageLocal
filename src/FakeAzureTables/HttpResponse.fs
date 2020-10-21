@@ -27,25 +27,26 @@ Content-Transfer-Encoding: binary""" changesetId
 let private fromWriteCommandResponse (response: WriteCommandResponse): Http.Response =
   match response with
   | WriteCommandResponse.Ack (keys, etag) ->
+      let headers =
+        [ "X-Content-Type-Options", "nosniff"
+          "Cache-Control", "no-cache"
+          "Preference-Applied", "return-no-content"
+          "DataServiceVersion", "3.0;"
+          "Location",
+          sprintf "http://localhost/devstoreaccount1/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey // TODO: Work out how to get host name and port into this?
+          "DataServiceId",
+          sprintf "http://localhost/devstoreaccount1/test(PartitionKey='%s',RowKey='%s')" keys.PartitionKey keys.RowKey ]
+
+      let headers =
+        match etag with
+        | Specific etag ->
+            headers
+            |> List.append [ "ETag", etag |> ETag.serialize ]
+        | _ -> headers
+
       { StatusCode = StatusCode.NoContent
         ContentType = None
-        Headers =
-          [ "X-Content-Type-Options", "nosniff"
-            "Cache-Control", "no-cache"
-            "Preference-Applied", "return-no-content"
-            "DataServiceVersion", "3.0;"
-            "Location",
-            sprintf
-              "http://localhost/devstoreaccount1/test(PartitionKey='%s',RowKey='%s')"
-              keys.PartitionKey
-              keys.RowKey // TODO: Work out how to get host name and port into this?
-            "DataServiceId",
-            sprintf
-              "http://localhost/devstoreaccount1/test(PartitionKey='%s',RowKey='%s')"
-              keys.PartitionKey
-              keys.RowKey
-            "ETag", etag |> ETag.serialize ]
-          |> dict
+        Headers = headers |> dict
         Body = None }
   | WriteCommandResponse.Conflict UpdateConditionNotSatisfied ->
       { StatusCode = StatusCode.PreconditionFailed
@@ -171,4 +172,5 @@ let applyToCtx (ctx: HttpContext) (response: Response) =
     then do! ctx.Response.WriteAsync response.Body.Value
   }
 
-let statusCode (ctx: HttpContext) (code: StatusCode) () = task { ctx.Response.StatusCode <- int code }
+let statusCode (ctx: HttpContext) (code: StatusCode) () =
+  task { ctx.Response.StatusCode <- int code }
