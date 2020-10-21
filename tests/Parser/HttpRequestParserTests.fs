@@ -52,6 +52,10 @@ If-Match: W/"datetime'2020-10-19T11:03:15Z'"
 
         Expect.isSome batches "unexpected result"
         Expect.equal (batches |> Option.valueOf |> List.length) 1 "unexpected length"
+        Expect.equal (batches |> Option.valueOf |> List.length) 1 "unexpected length"
+        Expect.equal (batches.Value.[0].Path) ("/devstoreaccount1/test7(PartitionKey='pk2',RowKey='r2k')") "unexpected Path"
+        Expect.equal (batches.Value.[0].Headers.ContainsKey "if-match") true "unexpected length"
+        Expect.equal batches.Value.[0].Body "" "unexpected length"
       }
 
       test "delete record request from storage explorer" {
@@ -97,6 +101,9 @@ maxdataserviceversion: 3.0;NetFx
 
         Expect.isSome batches "unexpected result"
         Expect.equal (batches |> Option.valueOf |> List.length) 1 "unexpected length"
+        Expect.equal (batches.Value.[0].Path) ("/devstoreaccount1/test2(PartitionKey='5',RowKey='5')") "unexpected Uri"
+        Expect.equal (batches.Value.[0].Headers.ContainsKey "if-match") true "unexpected length"
+        Expect.equal batches.Value.[0].Body "" "unexpected length"
       }
 
       test "merge and insert request from stream stone request" {
@@ -196,6 +203,10 @@ If-Match: W/"datetime'2020-10-21T16:17:02.450Z'"
           |> HttpRequest.tryExtractBatches
 
         Expect.isSome batches "unexpected result"
+        Expect.equal
+          (batches.Value.[0].Uri)
+          (Uri("http://localhost.charlesproxy.com:57282/devstoreaccount1/test8(PartitionKey='pk2',RowKey='r2k')"))
+          "unexpected Uri"
         Expect.equal (batches.Value.[0].Headers.ContainsKey "if-match") true "unexpected length"
         Expect.equal batches.Value.[0].Body "" "unexpected length"
       } ]

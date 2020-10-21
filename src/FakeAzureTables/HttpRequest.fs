@@ -71,13 +71,20 @@ type private ParserCallbacks() =
   member __.Query = _query
 
 
-let private normalise (input: string) =
-  let normalizedLineEndings =
-    input.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n").TrimStart()
+let removeDoubleLineBreaks (source: string) =
+  if ("\r\n\r\n".Equals(source.Substring(source.Length - 4, 4)))
+  then sprintf "%s%s" (source.Substring(0, source.Length - 4)) "\r\n"
+  else source
 
-  if ("MERGE".Equals(normalizedLineEndings.Substring(0, 5)))
-  then sprintf "%s%s" "POST" (normalizedLineEndings.Substring(5))
-  else normalizedLineEndings
+let mergeToPost (source: string) =
+  if ("MERGE".Equals(source.Substring(0, 5)))
+  then sprintf "%s%s" "POST" (source.Substring(5))
+  else source
+
+let private normalise (input: string) =
+  input.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n").TrimStart()
+  |> removeDoubleLineBreaks
+  |> mergeToPost
 
 let parse (input: string) =
   try
@@ -106,9 +113,8 @@ let parse (input: string) =
     let request: Request =
       { Method = app.Method
         Path =
-          if uri.IsAbsoluteUri
-          then uri.AbsolutePath
-          else uri.OriginalString |> Net.WebUtility.UrlDecode
+          if uri.IsAbsoluteUri then uri.AbsolutePath else uri.OriginalString
+          |> Net.WebUtility.UrlDecode
         Body = body
         Headers = app.Headers
         Query = app.Query
