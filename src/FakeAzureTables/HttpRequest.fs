@@ -73,7 +73,7 @@ type private ParserCallbacks() =
 
 let private normalise (input: string) =
   let normalizedLineEndings =
-    input.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n").Trim()
+    input.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n").TrimStart()
 
   if ("MERGE".Equals(normalizedLineEndings.Substring(0, 5)))
   then sprintf "%s%s" "POST" (normalizedLineEndings.Substring(5))

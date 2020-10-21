@@ -12,7 +12,8 @@ let batchMergeTests =
 
         let table = createFakeTables ()
 
-        let entity = DynamicTableEntity("pk2", "r2k", null, stringFieldType "Inserted Value")
+        let entity =
+          DynamicTableEntity("pk2", "r2k", null, stringFieldType "Inserted Value")
 
         entity
         |> TableOperation.Insert
@@ -21,11 +22,10 @@ let batchMergeTests =
 
         let batch = TableBatchOperation()
 
-        let mergedEntity = DynamicTableEntity("pk2", "r2k", entity.ETag, stringFieldType "Updated Value")
+        let mergedEntity =
+          DynamicTableEntity("pk2", "r2k", entity.ETag, stringFieldType "Updated Value")
 
-        mergedEntity
-        |> TableOperation.Merge
-        |> batch.Add
+        mergedEntity |> TableOperation.Merge |> batch.Add
 
         let actual = batch |> table.ExecuteBatch
 
@@ -41,23 +41,20 @@ let batchDeleteTests =
     [ test "delete existing row is accepted" {
         let table = createFakeTables ()
 
-        let entity = DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
+        let entity =
+          DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
 
-        entity
-        |> TableOperation.Insert
-        |> table.Execute
-        |> ignore
+        let insertResult =
+          entity |> TableOperation.Insert |> table.Execute
 
         let batch = TableBatchOperation()
 
-        entity
-        |> TableOperation.Delete
-        |> batch.Add
+        entity |> TableOperation.Delete |> batch.Add
 
-        let actual = batch |> table.ExecuteBatch
+        let batchResult = batch |> table.ExecuteBatch
 
-        Expect.equal (actual |> Seq.length) 1 "unexpected result"
-        for batchItem in actual do
+        Expect.equal (batchResult |> Seq.length) 1 "unexpected result"
+        for batchItem in batchResult do
           Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
       } ]
 

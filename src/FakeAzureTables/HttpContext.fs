@@ -61,10 +61,10 @@ module private Request =
             | true, [| etag |] -> ReplaceRequest(tableName, partitionKey, rowKey, etag |> ETag.parse, jObject)
             | _ -> InsertOrReplaceRequest(tableName, partitionKey, rowKey, jObject)
         | Method.Get -> GetRequest(tableName, partitionKey, rowKey)
-        | Method.Delete -> 
+        | Method.Delete ->
             match request.Headers.TryGetValue("if-match") with
             | true, [| etag |] -> DeleteRequest(tableName, partitionKey, rowKey, etag |> ETag.parse)
-            | _ -> DeleteRequest(tableName, partitionKey, rowKey, ETag.create()) // TODO: if this is optional, then model it that way.
+            | _ -> DeleteRequest(tableName, partitionKey, rowKey, ETag.Missing)
         | _ -> NotFoundRequest
     | _ -> NotFoundRequest
 
