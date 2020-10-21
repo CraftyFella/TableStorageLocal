@@ -4,6 +4,16 @@ open System
 open System.Collections.Generic
 open System.Text.RegularExpressions
 
+let (|Regex|_|) pattern input =
+  match Regex.Match(input, pattern) with
+  | m when m.Success ->
+      m.Groups
+      |> Seq.skip 1
+      |> Seq.map (fun g -> g.Value)
+      |> Seq.toList
+      |> Some
+  | _ -> None
+
 [<RequireQualifiedAccess>]
 type QueryComparison =
   | Equal
@@ -56,25 +66,27 @@ type TableRow =
     | true, FieldValue.Date etag -> etag
     | _ -> Unchecked.defaultof<DateTimeOffset>
 
+
+type ETag =
+  | All
+  | Specific of DateTimeOffset
+  | Missing
+
 [<RequireQualifiedAccess>]
 module ETag =
   let serialize (input: DateTimeOffset) =
     sprintf "W/\"datetime'%s'\"" (input.ToString("s") + "Z")
 
-  let create () = System.DateTimeOffset.UtcNow
+  let create () = System.DateTimeOffset.UtcNow |> Specific
 
-  let parse (input: string) =
-    let pattern = "datetime'(.+)'"
-
-    let result =
-      System.Text.RegularExpressions.Regex.Match(input, pattern)
-
-    match result.Success with
-    | true ->
-        match DateTimeOffset.TryParse result.Groups.[1].Value with
-        | true, etag -> etag
-        | _ -> failwithf "Not a valid datetimeoffset"
-    | _ -> failwithf "Not a valid eTag"
+  let parse (input: string): ETag =
+    match input with
+    | "*" -> All
+    | Regex "datetime'(.+)'" [ etag ] ->
+        match DateTimeOffset.TryParse etag with
+        | true, etag -> Specific etag
+        | _ -> Missing
+    | _ -> Missing
 
 type TableCommand =
   | CreateTable of Table: string
@@ -82,11 +94,11 @@ type TableCommand =
 
 type WriteCommand =
   | Insert of Table: string * TableRow
-  | Replace of Table: string * ETag: DateTimeOffset * TableRow
-  | Merge of Table: string * ETag: DateTimeOffset * TableRow
+  | Replace of Table: string * ETag * TableRow
+  | Merge of Table: string * ETag * TableRow
+  | Delete of Table: string * ETag * TableKeys
   | InsertOrReplace of Table: string * TableRow
   | InsertOrMerge of Table: string * TableRow
-  | Delete of Table: string * TableKeys
 
 type ReadCommand =
   | Get of Table: string * TableKeys
@@ -115,7 +127,7 @@ type TableCommandResponse =
   | TableList of string seq
 
 type WriteCommandResponse =
-  | Ack of TableKeys * ETag: DateTimeOffset
+  | Ack of TableKeys * ETag
   | Conflict of WriteConflictReason
 
 type ReadCommandResponse =
@@ -227,20 +239,26 @@ module TableRow =
       | _ -> ()
     row
 
-  let withETag (etag: DateTimeOffset) (row: TableRow) =
-    row.Fields.TryAdd("Timestamp", FieldValue.Date etag)
-    |> ignore
-    row
+  let withETag (etag: ETag) (row: TableRow) =
+    match etag with
+    | Specific etag ->
+        row.Fields.TryAdd("Timestamp", FieldValue.Date etag)
+        |> ignore
+        row
+    | _ -> row
 
-let (|Regex|_|) pattern input =
-  match Regex.Match(input, pattern) with
-  | m when m.Success ->
-      m.Groups
-      |> Seq.skip 1
-      |> Seq.map (fun g -> g.Value)
-      |> Seq.toList
-      |> Some
-  | _ -> None
+  let (|ExistsWithMatchingETag|_|) (existingETag: ETag) (existingRow: TableRow option) =
+    match existingRow, existingETag with
+    | Some existingRow, ETag.Specific existingETag when (existingRow.ETag |> ETag.serialize) =
+                                                          (existingETag |> ETag.serialize) -> Some existingRow
+    | Some existingRow, ETag.All -> Some existingRow
+    | _ -> None
+
+  let (|ExistsWithDifferentETag|_|) (existingETag: ETag) (existingRow: TableRow option) =
+    match existingRow, existingETag with
+    | Some existingRow, ETag.Specific existingETag when (existingRow.ETag |> ETag.serialize)
+                                                        <> (existingETag |> ETag.serialize) -> Some existingRow
+    | _ -> None
 
 module Result =
   let isOk result =

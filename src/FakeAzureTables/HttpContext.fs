@@ -61,7 +61,10 @@ module private Request =
             | true, [| etag |] -> ReplaceRequest(tableName, partitionKey, rowKey, etag |> ETag.parse, jObject)
             | _ -> InsertOrReplaceRequest(tableName, partitionKey, rowKey, jObject)
         | Method.Get -> GetRequest(tableName, partitionKey, rowKey)
-        | Method.Delete -> DeleteRequest(tableName, partitionKey, rowKey)
+        | Method.Delete -> 
+            match request.Headers.TryGetValue("if-match") with
+            | true, [| etag |] -> DeleteRequest(tableName, partitionKey, rowKey, etag |> ETag.parse)
+            | _ -> DeleteRequest(tableName, partitionKey, rowKey, ETag.create()) // TODO: if this is optional, then model it that way.
         | _ -> NotFoundRequest
     | _ -> NotFoundRequest
 
@@ -121,9 +124,10 @@ module private Request =
              Fields = (fields |> TableFields.fromJObject) })
         |> Write
         |> Some
-    | DeleteRequest (table, partitionKey, rowKey) ->
+    | DeleteRequest (table, partitionKey, rowKey, etag) ->
         Delete
           (table,
+           etag,
            { PartitionKey = partitionKey
              RowKey = rowKey })
         |> Write

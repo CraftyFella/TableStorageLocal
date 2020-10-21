@@ -12,7 +12,7 @@ type FakeTables with
 
 let createFakeTables () =
   let tables = new FakeTables()
-  let table = tables.Client.GetTableReference "test7"
+  let table = tables.Client.GetTableReference "test8"
   table.CreateIfNotExists() |> ignore
   table
 
