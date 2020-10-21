@@ -247,6 +247,19 @@ module TableRow =
         row
     | _ -> row
 
+  let (|ExistsWithMatchingETag|_|) (existingETag: ETag) (existingRow: TableRow option) =
+    match existingRow, existingETag with
+    | Some existingRow, ETag.Specific existingETag when (existingRow.ETag |> ETag.serialize) =
+                                                          (existingETag |> ETag.serialize) -> Some existingRow
+    | Some existingRow, ETag.All -> Some existingRow
+    | _ -> None
+
+  let (|ExistsWithDifferentETag|_|) (existingETag: ETag) (existingRow: TableRow option) =
+    match existingRow, existingETag with
+    | Some existingRow, ETag.Specific existingETag when (existingRow.ETag |> ETag.serialize)
+                                                        <> (existingETag |> ETag.serialize) -> Some existingRow
+    | _ -> None
+
 module Result =
   let isOk result =
     match result with
