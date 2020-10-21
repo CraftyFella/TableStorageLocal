@@ -59,8 +59,10 @@ let writeCommandHandler (db: ILiteDatabase) command =
       let etag = ETag.create ()
       match row.Keys
             |> TableKeys.toBsonExpression
-            |> table.TryFindOne, existingETag with
-      | Some existingRow, Specific existingETag when (existingRow.ETag |> ETag.serialize) = (existingETag |> ETag.serialize) ->
+            |> table.TryFindOne,
+            existingETag with
+      | Some existingRow, Specific existingETag when (existingRow.ETag |> ETag.serialize) =
+                                                       (existingETag |> ETag.serialize) ->
           match table.Update(row |> TableRow.withETag etag) with
           | true -> WriteCommandResponse.Ack(row.Keys, etag)
           | _ -> WriteCommandResponse.Conflict EntityDoesntExist
@@ -71,25 +73,33 @@ let writeCommandHandler (db: ILiteDatabase) command =
       let etag = ETag.create ()
       match row.Keys
             |> TableKeys.toBsonExpression
-            |> table.TryFindOne, existingETag with
-      | Some existingRow, Specific existingETag when (existingRow.ETag |> ETag.serialize) = (existingETag |> ETag.serialize) ->
+            |> table.TryFindOne,
+            existingETag with
+      | Some existingRow, Specific existingETag when (existingRow.ETag |> ETag.serialize) =
+                                                       (existingETag |> ETag.serialize) ->
           match table.Update
                   (row
                    |> TableRow.merge existingRow
                    |> TableRow.withETag etag) with
           | true -> WriteCommandResponse.Ack(row.Keys, etag)
           | _ -> WriteCommandResponse.Conflict EntityDoesntExist
-      | Some _, Specific _  -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
+      | Some _, Specific _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
       | _ -> WriteCommandResponse.Conflict EntityDoesntExist
   | Delete (table, existingETag, keys) ->
       let table = db.GetTable table
+
+      let performDelete () =
+        table.DeleteMany(keys |> TableKeys.toBsonExpression)
+        |> ignore
+        WriteCommandResponse.Ack(keys, Missing)
+
       match keys
             |> TableKeys.toBsonExpression
-            |> table.TryFindOne, existingETag with
-      | Some existingRow, Specific existingETag when (existingRow.ETag |> ETag.serialize) = (existingETag |> ETag.serialize) ->
-          table.DeleteMany(keys |> TableKeys.toBsonExpression)
-          |> ignore
-          WriteCommandResponse.Ack(keys, Missing)
+            |> table.TryFindOne,
+            existingETag with
+      | Some existingRow, ETag.Specific existingETag when (existingRow.ETag |> ETag.serialize) =
+                                                            (existingETag |> ETag.serialize) -> performDelete ()
+      | Some _, ETag.All -> performDelete ()
       | _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
 
 let readCommandHandler (db: ILiteDatabase) command =
