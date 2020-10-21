@@ -242,6 +242,7 @@ module TableRow =
   let withETag (etag: ETag) (row: TableRow) =
     match etag with
     | Specific etag ->
+        row.Fields.Remove("Timestamp") |> ignore
         row.Fields.TryAdd("Timestamp", FieldValue.Date etag)
         |> ignore
         row
