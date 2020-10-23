@@ -387,6 +387,36 @@ let searchTests =
 
       }
 
+      test "Take more than rows in db" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "rk1"
+          createEntity "pk1" "rk2"
+          createEntity "pk2" "rk3"
+          createEntity "pk1" "rk4"
+          createEntity "pk1" "rk5" ]
+        |> List.iter insert
+
+        let query =
+          TableQuery<DynamicTableEntity>().Take(Nullable 100)
+
+        let token = TableContinuationToken()
+
+        let results =
+          table.ExecuteQuerySegmented(query, token)
+
+        let actualCount = results |> Seq.length
+
+        Expect.equal actualCount 5 "all 5 rows expected"
+
+      }
+
       test "Select single field" {
         let table = createFakeTables ()
 
