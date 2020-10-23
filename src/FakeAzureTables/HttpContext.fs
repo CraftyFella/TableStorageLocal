@@ -26,9 +26,12 @@ module private Request =
           |> Option.map int
           |> Option.defaultValue 1000
 
+        let nextPartitionKey = qs "NextPartitionKey"
+        let nextRowKey = qs "NextRowKey"
+
         let select = qs "$select"
 
-        Some(tableName, select, filter, top)
+        Some(tableName, select, filter, top, nextPartitionKey, nextRowKey)
     | _ -> None
 
   let private (|CreateTableRequest|_|) (request: Request) =
@@ -152,20 +155,41 @@ module private Request =
              RowKey = rowKey })
         |> Read
         |> Some
-    | QueryRequest (table, select, filter, top) ->
+    | QueryRequest (table, select, filter, top, nextPartitionKey, nextRowKey) ->
         let select =
           select
           |> Option.map (fun s -> s.Split(",") |> Seq.toList |> Select.Fields)
           |> Option.defaultValue Select.All
 
+        let continuation =
+          match nextPartitionKey, nextRowKey with
+          | Some nextPartitionKey, Some nextRowKey ->
+              { NextPartitionKey = nextPartitionKey
+                NextRowKey = nextRowKey }
+              |> Some
+          | _ -> None
+
         match filter with
         | None ->
-            Query(table, select, Filter.All, top)
+            Query
+              ({ Table = table
+                 Select = select
+                 Filter = Filter.All
+                 Top = top
+                 Continuation = continuation })
             |> Read
             |> Some
         | Some filter ->
             match FilterParser.parse filter with
-            | Ok filter -> Query(table, select, filter, top) |> Read |> Some
+            | Ok filter ->
+                Query
+                  ({ Table = table
+                     Select = select
+                     Filter = filter
+                     Top = top
+                     Continuation = continuation })
+                |> Read
+                |> Some
             | Error error ->
                 printfn "Filter: %A;\nError: %A" filter error
                 None

@@ -106,15 +106,21 @@ let private fromReadCommandResponse (response: ReadCommandResponse): Http.Respon
           [ "ETag", response.ETag |> ETag.serialize ]
           |> dict
         Body = Some json }
-  | QueryResponse results ->
+  | QueryResponse (rows, continuation) ->
       let rows =
-        results |> List.map (TableRow.toJObject) |> JArray
+        rows |> Array.map (TableRow.toJObject) |> JArray
 
       let response = JObject([ JProperty("value", rows) ])
       let json = (response.ToString())
       { StatusCode = StatusCode.Ok
         ContentType = Some ContentType.ApplicationJson
-        Headers = new Dictionary<_, _>()
+        Headers =
+          match continuation with
+          | None -> []
+          | Some continuation ->
+              [ "x-ms-continuation-NextPartitionKey", continuation.NextPartitionKey
+                "x-ms-continuation-NextRowKey", continuation.NextRowKey ]
+          |> dict
         Body = Some json }
   | ReadCommandResponse.NotFoundResponse ->
       { StatusCode = StatusCode.NotFound

@@ -105,9 +105,22 @@ type WriteCommand =
   | InsertOrReplace of Table: string * TableRow
   | InsertOrMerge of Table: string * TableRow
 
+type Continuation = {
+  NextPartitionKey: string
+  NextRowKey: string
+}
+
+type Query = {
+  Table: string
+  Select: Select  // TODO: This should be an option
+  Filter: Filter  // TODO: This should be an option
+  Top: int        // TODO: This should be an option
+  Continuation: Continuation option
+}
+
 type ReadCommand =
   | Get of Table: string * TableKeys
-  | Query of Table: string * Select * Filter * Top: int
+  | Query of Query
 
 type BatchCommand = { Commands: WriteCommand list }
 
@@ -137,7 +150,7 @@ type WriteCommandResponse =
 
 type ReadCommandResponse =
   | GetResponse of TableRow
-  | QueryResponse of TableRow list
+  | QueryResponse of TableRow array * Continuation option
   | NotFoundResponse
 
 type BatchCommandResponse =

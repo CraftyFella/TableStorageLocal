@@ -4,7 +4,7 @@ open Domain
 open LiteDB
 open Bson
 
-let rec applyFilter (col: ILiteCollection<TableRow>) filter limit =
+let rec applyFilter (col: ILiteCollection<TableRow>) filter limit (continuation: Continuation option) =
 
   let queryComparisonExpressionBuilder field qc value =
     match qc with
@@ -29,5 +29,36 @@ let rec applyFilter (col: ILiteCollection<TableRow>) filter limit =
     | Filter.All ->
         queryComparisonExpressionBuilder "$.Keys.PartitionKey" QueryComparison.NotEqual (FieldValue.String "--")
 
+  // let applyContinuation (expr: BsonExpression) =
+  //   match continuation with
+  //   | Some continuation ->
+  //       let continuationExpression =
+  //         Query.And
+  //           (Query.GTE("$.Keys.PartitionKey", BsonValue continuation.NextPartitionKey),
+  //            Query.GTE("$.Keys.RowKey", BsonValue continuation.NextRowKey))
+
+  //       Query.And(continuationExpression, expr)
+  //   | _ -> expr
+
   let expression = filterExpressionBuilder filter
-  col.Find(expression, limit = limit)
+
+  let skip =
+    continuation
+    |> Option.map (fun c -> c.NextPartitionKey)
+    |> Option.map (int)
+    |> Option.defaultValue 0
+
+  let rows =
+    col.Find(expression, limit = limit, skip = skip)
+    |> Seq.toArray
+
+  let continuation =
+    match rows.Length > 0 with
+    | true ->
+        { NextPartitionKey = string (rows.Length + skip)
+          NextRowKey = string (rows.Length + skip) }
+        |> Some
+    | _ -> None
+
+  // printfn "Continuation %A" continuation
+  rows, continuation

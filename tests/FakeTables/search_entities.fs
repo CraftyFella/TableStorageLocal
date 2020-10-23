@@ -298,7 +298,36 @@ let searchTests =
 
       }
 
-      test "no matchses" {
+      test "no filter" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "bbb"
+          createEntity "pk1" "aaa"
+          createEntity "pk2" "ccc"
+          createEntity "pk1" "eee"
+          createEntity "pk1" "ddd" ]
+        |> List.iter insert
+
+        let query = TableQuery<DynamicTableEntity>()
+
+        let results = executeQuery table query
+
+        let rowKeys =
+          results
+          |> Seq.map (fun r -> r.RowKey)
+          |> Seq.sort
+          |> Seq.toList
+
+        Expect.equal rowKeys [ "aaa"; "bbb"; "ccc"; "ddd"; "eee" ] "unexpected row Keys"
+      }
+
+      test "no matches" {
         let table = createFakeTables ()
 
         let filter =
@@ -316,7 +345,7 @@ let searchTests =
 
       }
 
-      test "top 1 with matching partition key" {
+      test "Take 1 row" {
         let table = createFakeTables ()
 
         let insert entity =
@@ -358,7 +387,7 @@ let searchTests =
 
       }
 
-      test "top 1 only only StringField matching partition key" {
+      test "Select single field" {
         let table = createFakeTables ()
 
         let insert entity =
@@ -398,4 +427,97 @@ let searchTests =
           Expect.equal (result.Properties |> Seq.length) 1 "unexpected values"
           Expect.equal (result.Properties.["StringField"].StringValue) "StringValue" "unexpected values"
 
+      }
+
+      test "Paging" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "rk1"
+          createEntity "pk1" "rk2"
+          createEntity "pk2" "rk3"
+          createEntity "pk1" "rk4"
+          createEntity "pk1" "rk5" ]
+        |> List.iter insert
+
+        let filter =
+          TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
+
+        let query = TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
+
+        let results = executeQuery table query
+
+        let rowKeys =
+          results
+          |> Seq.map (fun r -> r.RowKey)
+          |> Seq.sort
+          |> Seq.toList
+
+        Expect.equal rowKeys [ "rk1"; "rk2"; "rk4"; "rk5" ] "unexpected row Keys"
+      }
+
+      test "Paging non sequential row keys" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "bbb"
+          createEntity "pk1" "aaa"
+          createEntity "pk2" "ccc"
+          createEntity "pk1" "eee"
+          createEntity "pk1" "ddd" ]
+        |> List.iter insert
+
+        let filter =
+          TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
+
+        let query = TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
+
+        let results = executeQuery table query
+
+        let rowKeys =
+          results
+          |> Seq.map (fun r -> r.RowKey)
+          |> Seq.sort
+          |> Seq.toList
+
+        Expect.equal rowKeys [ "aaa"; "bbb"; "ddd"; "eee" ] "unexpected row Keys"
+      }
+
+      test "Paging no filter" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "bbb"
+          createEntity "pk1" "aaa"
+          createEntity "pk2" "ccc"
+          createEntity "pk1" "eee"
+          createEntity "pk1" "ddd" ]
+        |> List.iter insert
+
+        let query = TableQuery<DynamicTableEntity>().Take(Nullable 1)
+
+        let results = executeQuery table query
+
+        let rowKeys =
+          results
+          |> Seq.map (fun r -> r.RowKey)
+          |> Seq.sort
+          |> Seq.toList
+
+        Expect.equal rowKeys [ "aaa"; "bbb"; "ccc"; "ddd"; "eee" ] "unexpected row Keys"
       } ]

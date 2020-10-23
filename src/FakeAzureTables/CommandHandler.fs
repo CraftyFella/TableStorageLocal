@@ -94,12 +94,12 @@ let writeCommandHandler (db: ILiteDatabase) command =
       | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
       | _ -> WriteCommandResponse.Conflict EntityDoesntExist
 
-let applySelect fields (tableRows: TableRow seq) =
+let applySelect fields (tableRows: TableRow array) =
   match fields with
   | Select.All -> tableRows
   | Select.Fields fields ->
       tableRows
-      |> Seq.map (fun f ->
+      |> Array.map (fun f ->
 
            let filteredFields =
              f.Fields
@@ -117,12 +117,13 @@ let readCommandHandler (db: ILiteDatabase) command =
             |> table.TryFindOne with
       | Some row -> GetResponse(row)
       | _ -> ReadCommandResponse.NotFoundResponse
-  | Query (table, select, filter, top) ->
-      let table = db.GetTable table
-      applyFilter table filter top
-      |> applySelect select
-      |> Seq.toList
-      |> QueryResponse
+  | Query query ->
+      let table = db.GetTable query.Table
+
+      let rows, continuation = applyFilter table query.Filter query.Top query.Continuation
+      let rows = rows |> applySelect query.Select
+
+      QueryResponse(rows, continuation)
 
 let commandHandler (db: ILiteDatabase) command =
   let tableCommandHandler = tableCommandHandler db
