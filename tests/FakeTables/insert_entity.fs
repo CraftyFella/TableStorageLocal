@@ -34,8 +34,27 @@ let insertTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.Message = "Conflict") run  "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.Message = "Conflict") run
+          "expected exception"
       }
+
+      test "row exists (Different case) is accepted" {
+        let table = createFakeTables ()
+
+        DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
+        |> TableOperation.Insert
+        |> table.Execute
+        |> ignore
+
+        let actual =
+          DynamicTableEntity("PK2", "R2K", "*", allFieldTypes ())
+          |> TableOperation.Insert
+          |> table.Execute
+
+        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+        Expect.isNotNull (actual.Etag) "eTag is expected"
+      }
+
       test "inserted row is retrievable" {
         let table = createFakeTables ()
         let fields = allFieldTypes ()

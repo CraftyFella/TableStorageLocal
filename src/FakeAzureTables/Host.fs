@@ -8,6 +8,7 @@ open Microsoft.AspNetCore.Builder
 open HttpContext
 open CommandHandler
 open LiteDB
+open LiteDB.Engine
 
 let private findPort () =
   TcpListener(IPAddress.Loopback, 0)
@@ -49,6 +50,9 @@ type FakeTables(?connectionString, ?port) =
       .UseKestrel(fun options -> options.AllowSynchronousIO <- true).Build()
 
   do
+    // Case Sensitive
+    db.Rebuild(RebuildOptions(Collation = Collation("en-US/None")))
+    |> ignore
     if Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
        <> null then
       connectionString <- Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
