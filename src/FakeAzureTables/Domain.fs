@@ -64,7 +64,7 @@ type TableRow =
   { Keys: TableKeys
     Fields: TableFields }
   member __.Id =
-    (__.Keys.PartitionKey + __.Keys.RowKey).ToLower()
+    (__.Keys.PartitionKey + __.Keys.RowKey)
 
   member __.ETag =
     match __.Fields.TryGetValue "Timestamp" with

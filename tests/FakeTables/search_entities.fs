@@ -448,7 +448,8 @@ let searchTests =
         let filter =
           TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
 
-        let query = TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
+        let query =
+          TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
 
         let results = executeQuery table query
 
@@ -480,7 +481,8 @@ let searchTests =
         let filter =
           TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
 
-        let query = TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
+        let query =
+          TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
 
         let results = executeQuery table query
 
@@ -509,7 +511,8 @@ let searchTests =
           createEntity "pk1" "ddd" ]
         |> List.iter insert
 
-        let query = TableQuery<DynamicTableEntity>().Take(Nullable 1)
+        let query =
+          TableQuery<DynamicTableEntity>().Take(Nullable 1)
 
         let results = executeQuery table query
 
@@ -520,4 +523,71 @@ let searchTests =
           |> Seq.toList
 
         Expect.equal rowKeys [ "aaa"; "bbb"; "ccc"; "ddd"; "eee" ] "unexpected row Keys"
+      }
+
+      test "Paging size 2 no filter" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "pk1" "bbb"
+          createEntity "pk1" "aaa"
+          createEntity "pk2" "ccc"
+          createEntity "pk1" "eee"
+          createEntity "pk1" "ddd" ]
+        |> List.iter insert
+
+        let query =
+          TableQuery<DynamicTableEntity>().Take(Nullable 2)
+
+        let results = executeQuery table query
+
+        let rowKeys =
+          results
+          |> Seq.map (fun r -> r.RowKey)
+          |> Seq.sort
+          |> Seq.toList
+
+        Expect.equal rowKeys [ "aaa"; "bbb"; "ccc"; "ddd"; "eee" ] "unexpected row Keys"
+      }
+
+      test "Paging mixture of cases" {
+        let table = createFakeTables ()
+
+        let insert entity =
+          entity
+          |> TableOperation.Insert
+          |> table.Execute
+          |> ignore
+
+        [ createEntity "PK1" "bbb"
+          createEntity "pk1" "aaa"
+          createEntity "pk2" "ccc"
+          createEntity "PK1" "EEE"
+          createEntity "pk1" "ddd" ]
+        |> List.iter insert
+
+        let query =
+          TableQuery<DynamicTableEntity>().Take(Nullable 2)
+
+        let results = executeQuery table query
+
+        let rowKeys =
+          results
+          |> Seq.map (fun r -> r.PartitionKey, r.RowKey)
+          |> Seq.sort
+          |> Seq.toList
+
+        Expect.equal
+          rowKeys
+          [ "PK1", "EEE"
+            "PK1", "bbb"
+            "pk1", "aaa"
+            "pk1", "ddd"
+            "pk2", "ccc" ]
+          "unexpected row Keys"
       } ]

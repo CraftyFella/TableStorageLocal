@@ -29,17 +29,6 @@ let rec applyFilter (col: ILiteCollection<TableRow>) filter limit (continuation:
     | Filter.All ->
         queryComparisonExpressionBuilder "$.Keys.PartitionKey" QueryComparison.NotEqual (FieldValue.String "--")
 
-  // let applyContinuation (expr: BsonExpression) =
-  //   match continuation with
-  //   | Some continuation ->
-  //       let continuationExpression =
-  //         Query.And
-  //           (Query.GTE("$.Keys.PartitionKey", BsonValue continuation.NextPartitionKey),
-  //            Query.GTE("$.Keys.RowKey", BsonValue continuation.NextRowKey))
-
-  //       Query.And(continuationExpression, expr)
-  //   | _ -> expr
-
   let expression = filterExpressionBuilder filter
 
   let skip =
@@ -60,5 +49,4 @@ let rec applyFilter (col: ILiteCollection<TableRow>) filter limit (continuation:
         |> Some
     | _ -> None
 
-  // printfn "Continuation %A" continuation
   rows, continuation
