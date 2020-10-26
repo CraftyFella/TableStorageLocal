@@ -51,11 +51,6 @@ module Database =
       __.GetCollection<TableRow> collectionName
 
   type ILiteCollection<'T> with
-    member __.TryFindById(id: string) =
-      match __.FindById(BsonValue id) |> box with
-      | null -> None
-      | row -> Some(row |> unbox)
-
     member __.TryInsert(row: 'T) =
       try
         __.Insert row |> ignore
@@ -65,6 +60,7 @@ module Database =
       | _ -> reraise ()
 
     member __.TryFindOne(predicate: BsonExpression) = __.Find predicate |> Seq.tryHead
+    member __.TryFindById(id: string) = __.TryFindOne (Query.EQ("_id", BsonValue id))
 
   let tableNameIsValid tableName =
     Regex.IsMatch(tableName, "^[A-Za-z0-9]{2,62}$")

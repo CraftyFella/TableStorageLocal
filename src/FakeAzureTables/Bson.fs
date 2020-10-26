@@ -8,13 +8,13 @@ module Bson =
   [<RequireQualifiedAccess>]
   module TableKeys =
     let toBsonExpression keys =
-      Query.EQ("$.Keys.PartitionKey + $.Keys.RowKey", BsonValue(keys.PartitionKey + keys.RowKey))
+      Query.EQ("_id", BsonValue(keys.PartitionKey + keys.RowKey))
 
   [<RequireQualifiedAccess>]
   module Continuation =
     let toBsonExpression (continuation: Continuation) =
       Query.GTE
-        ("$.Keys.PartitionKey + $.Keys.RowKey",
+        ("_id",
          BsonValue
            (continuation.NextPartitionKey
             + continuation.NextRowKey))
