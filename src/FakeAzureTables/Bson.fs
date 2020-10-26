@@ -8,8 +8,7 @@ module Bson =
   [<RequireQualifiedAccess>]
   module TableKeys =
     let toBsonExpression keys =
-      Query.And
-        (Query.EQ("$.Keys.PartitionKey", BsonValue keys.PartitionKey), Query.EQ("$.Keys.RowKey", BsonValue keys.RowKey))
+      Query.EQ("$.Keys.PartitionKey + $.Keys.RowKey", BsonValue(keys.PartitionKey + keys.RowKey))
 
   [<RequireQualifiedAccess>]
   module Continuation =

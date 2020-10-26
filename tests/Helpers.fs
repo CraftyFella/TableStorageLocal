@@ -11,7 +11,7 @@ module Expect =
   open Expecto
 
   [<RequiresExplicitTypeArguments>]
-  let throwsTWithPredicate<'texn when 'texn :> exn> predicate f message =
+  let throwsTWithPredicate<'texn when 'texn :> exn> (predicate: 'texn -> bool) f message =
     let thrown =
       try
         f ()
@@ -19,7 +19,8 @@ module Expect =
       with e -> Some e
 
     match thrown with
-    | Some e when e.GetType() = typeof<'texn> && predicate e -> ()
+    | Some e when e.GetType() = typeof<'texn>
+                  && predicate (e :?> 'texn) -> ()
     | Some e ->
         failtestf
           "%s. Expected f to throw an exn of type %s, and matching predicate. But one of type %s was thrown %A."

@@ -30,9 +30,7 @@ module CommandHandler =
         let etag = ETag.create ()
 
         let row =
-          match row.Keys
-                |> TableKeys.toBsonExpression
-                |> table.TryFindOne with
+          match row.Id |> table.TryFindById with
           | Some existingRow -> row |> TableRow.merge existingRow
           | _ -> row
 
@@ -58,9 +56,7 @@ module CommandHandler =
     | Replace (table, existingETag, row) ->
         let table = db.GetTable table
         let etag = ETag.create ()
-        match row.Keys
-              |> TableKeys.toBsonExpression
-              |> table.TryFindOne with
+        match row.Id |> table.TryFindById with
         | TableRow.ExistsWithMatchingETag existingETag existingRow ->
             match table.Update(row |> TableRow.withETag etag) with
             | true -> WriteCommandResponse.Ack(row.Keys, etag)
@@ -70,9 +66,7 @@ module CommandHandler =
     | Merge (table, existingETag, row) ->
         let table = db.GetTable table
         let etag = ETag.create ()
-        match row.Keys
-              |> TableKeys.toBsonExpression
-              |> table.TryFindOne with
+        match row.Id |> table.TryFindById with
         | TableRow.ExistsWithMatchingETag existingETag existingRow ->
             match table.Update
                     (row
@@ -84,9 +78,7 @@ module CommandHandler =
         | _ -> WriteCommandResponse.Conflict EntityDoesntExist
     | Delete (table, existingETag, keys) ->
         let table = db.GetTable table
-        match keys
-              |> TableKeys.toBsonExpression
-              |> table.TryFindOne with
+        match keys.Id |> table.TryFindById with
         | TableRow.ExistsWithMatchingETag existingETag _ ->
             table.DeleteMany(keys |> TableKeys.toBsonExpression)
             |> ignore
@@ -112,9 +104,7 @@ module CommandHandler =
     match command with
     | Get (table, keys) ->
         let table = db.GetTable table
-        match keys
-              |> TableKeys.toBsonExpression
-              |> table.TryFindOne with
+        match keys.Id |> table.TryFindById with
         | Some row -> GetResponse(row)
         | _ -> ReadCommandResponse.NotFoundResponse
     | Query query ->

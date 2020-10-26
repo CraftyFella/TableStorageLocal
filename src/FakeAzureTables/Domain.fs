@@ -60,12 +60,13 @@ module Domain =
   type TableKeys =
     { PartitionKey: string
       RowKey: string }
+    member __.Id = (__.PartitionKey + __.RowKey)
 
   [<CLIMutable>]
   type TableRow =
     { Keys: TableKeys
       Fields: TableFields }
-    member __.Id = (__.Keys.PartitionKey + __.Keys.RowKey)
+    member __.Id = (__.Keys.Id)
 
     member __.ETag =
       match __.Fields.TryGetValue "Timestamp" with

@@ -47,14 +47,15 @@ module Database =
             __.TablesCollection.Insert kvp |> ignore
             kvp.Value
 
-      let col =
-        __.GetCollection<TableRow> collectionName
 
-      col.EnsureIndex(fun tableRow -> tableRow.Id)
-      |> ignore
-      col
+      __.GetCollection<TableRow> collectionName
 
   type ILiteCollection<'T> with
+    member __.TryFindById(id: string) =
+      match __.FindById(BsonValue id) |> box with
+      | null -> None
+      | row -> Some(row |> unbox)
+
     member __.TryInsert(row: 'T) =
       try
         __.Insert row |> ignore
