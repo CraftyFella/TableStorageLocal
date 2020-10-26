@@ -6,7 +6,7 @@ open Bson
 open Database
 open System.Collections.Generic
 
-let tableCommandHandler (db: ILiteDatabase) command =
+let private tableCommandHandler (db: ILiteDatabase) command =
   match command with
   | CreateTable table ->
       match db.TableExists table, tableNameIsValid table with
@@ -21,7 +21,7 @@ let tableCommandHandler (db: ILiteDatabase) command =
       |> Seq.map (fun kvp -> kvp.Key)
       |> TableCommandResponse.TableList
 
-let writeCommandHandler (db: ILiteDatabase) command =
+let private writeCommandHandler (db: ILiteDatabase) command =
   match command with
   | InsertOrMerge (table, row) ->
       let table = db.GetTable table
@@ -92,7 +92,7 @@ let writeCommandHandler (db: ILiteDatabase) command =
       | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
       | _ -> WriteCommandResponse.Conflict EntityDoesntExist
 
-let applySelect fields (tableRows: TableRow array) =
+let private applySelect fields (tableRows: TableRow array) =
   match fields with
   | Select.All -> tableRows
   | Select.Fields fields ->
@@ -106,7 +106,7 @@ let applySelect fields (tableRows: TableRow array) =
 
            { f with Fields = filteredFields })
 
-let readCommandHandler (db: ILiteDatabase) command =
+let private readCommandHandler (db: ILiteDatabase) command =
   match command with
   | Get (table, keys) ->
       let table = db.GetTable table

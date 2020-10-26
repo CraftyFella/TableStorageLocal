@@ -3,11 +3,18 @@ module Bson
 open Domain
 open LiteDB
 
+[<RequireQualifiedAccess>]
 module TableKeys =
   let toBsonExpression keys =
     Query.And
       (Query.EQ("$.Keys.PartitionKey", BsonValue keys.PartitionKey), Query.EQ("$.Keys.RowKey", BsonValue keys.RowKey))
 
+[<RequireQualifiedAccess>]
+module Continuation =
+  let toBsonExpression (continuation: Continuation) =
+    Query.GTE("$.Keys.PartitionKey + $.Keys.RowKey", BsonValue (continuation.NextPartitionKey + continuation.NextRowKey))
+
+[<RequireQualifiedAccess>]
 module FieldValue =
   open System
 

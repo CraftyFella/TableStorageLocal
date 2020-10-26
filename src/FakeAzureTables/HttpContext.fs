@@ -89,7 +89,7 @@ module private Request =
     | Method.Post, "/devstoreaccount1/$batch" -> HttpRequest.tryExtractBatches request
     | _ -> None
 
-  let rec toCommand =
+  let rec internal toCommand =
     function
     | ListTablesRequest -> Table ListTables |> Some
     | CreateTableRequest name -> CreateTable name |> Table |> Some
@@ -222,8 +222,8 @@ let httpHandler commandHandler (ctx: HttpContext) =
   ctx.Request
   |> HttpRequest.toRequest
   |> Request.toCommand
-  |> Option.map
-       (commandHandler
-        >> HttpResponse.fromCommandResponse
-        >> HttpResponse.applyToCtx ctx)
-  |> Option.defaultWith (HttpResponse.statusCode ctx StatusCode.NotFound) :> Task
+  |> Option.map commandHandler
+  |> Option.defaultValue CommandResult.NotFoundResponse
+  |> HttpResponse.fromCommandResponse
+  |> HttpResponse.applyToCtx ctx
+  :> Task

@@ -5,7 +5,7 @@ open System.Collections.Generic
 open Domain
 open System.Text.RegularExpressions
 
-let randomString =
+let private randomString =
   let chars =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 

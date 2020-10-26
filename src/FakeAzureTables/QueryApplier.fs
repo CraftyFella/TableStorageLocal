@@ -34,12 +34,7 @@ let query (col: ILiteCollection<TableRow>) filter limit (continuation: Continuat
     match continuation with
     | Some continuation ->
         let left =
-          queryComparisonExpressionBuilder
-            "$.Keys.PartitionKey + $.Keys.RowKey"
-            QueryComparison.GreaterThanOrEqual
-            (FieldValue.String
-              (continuation.NextPartitionKey
-               + continuation.NextRowKey))
+          continuation |> Continuation.toBsonExpression
 
         Query.And(left, filterExpressionBuilder filter)
     | None -> filterExpressionBuilder filter
