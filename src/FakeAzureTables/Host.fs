@@ -51,7 +51,7 @@ type FakeTables(?connectionString, ?port) =
 
   do
     // Case Sensitive
-    db.Rebuild(RebuildOptions(Collation = Collation(db.Collation.LCID, Globalization.CompareOptions.None)))
+    db.Rebuild(RebuildOptions(Collation = Collation.Binary))
     |> ignore
     if Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
        <> null then

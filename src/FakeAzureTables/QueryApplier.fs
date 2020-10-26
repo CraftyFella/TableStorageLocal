@@ -1,10 +1,11 @@
-module FilterApplier
+[<RequireQualifiedAccess>]
+module QueryApplier
 
 open Domain
 open LiteDB
 open Bson
 
-let rec applyFilter (col: ILiteCollection<TableRow>) filter limit (continuation: Continuation option) =
+let query (col: ILiteCollection<TableRow>) filter limit (continuation: Continuation option) =
 
   let queryComparisonExpressionBuilder field qc value =
     match qc with
@@ -41,8 +42,12 @@ let rec applyFilter (col: ILiteCollection<TableRow>) filter limit (continuation:
     col.Find(expression, limit = limit, skip = skip)
     |> Seq.toArray
 
+  let next =
+    col.Find(expression, limit = 1, skip = (rows.Length + skip))
+    |> Seq.tryHead
+
   let continuation =
-    match rows.Length > 0 with
+    match rows.Length > 0 && next.IsSome with
     | true ->
         { NextPartitionKey = string (rows.Length + skip)
           NextRowKey = string (rows.Length + skip) }

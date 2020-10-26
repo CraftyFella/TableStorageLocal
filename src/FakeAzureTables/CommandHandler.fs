@@ -1,7 +1,5 @@
 module CommandHandler
 
-open FilterParser
-open FilterApplier
 open Domain
 open LiteDB
 open Bson
@@ -120,7 +118,7 @@ let readCommandHandler (db: ILiteDatabase) command =
   | Query query ->
       let table = db.GetTable query.Table
 
-      let rows, continuation = applyFilter table query.Filter query.Top query.Continuation
+      let rows, continuation = QueryApplier.query table query.Filter query.Top query.Continuation
       let rows = rows |> applySelect query.Select
 
       QueryResponse(rows, continuation)
