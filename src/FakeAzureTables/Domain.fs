@@ -63,8 +63,7 @@ type TableKeys =
 type TableRow =
   { Keys: TableKeys
     Fields: TableFields }
-  member __.Id =
-    (__.Keys.PartitionKey + __.Keys.RowKey)
+  member __.Id = (__.Keys.PartitionKey + __.Keys.RowKey)
 
   member __.ETag =
     match __.Fields.TryGetValue "Timestamp" with
@@ -105,18 +104,16 @@ type WriteCommand =
   | InsertOrReplace of Table: string * TableRow
   | InsertOrMerge of Table: string * TableRow
 
-type Continuation = {
-  NextPartitionKey: string
-  NextRowKey: string
-}
+type Continuation =
+  { NextPartitionKey: string
+    NextRowKey: string }
 
-type Query = {
-  Table: string
-  Select: Select  // TODO: This should be an option
-  Filter: Filter  // TODO: This should be an option
-  Top: int        // TODO: This should be an option
-  Continuation: Continuation option
-}
+type Query =
+  { Table: string
+    Select: Select // TODO: This should be an option
+    Filter: Filter // TODO: This should be an option
+    Top: int // TODO: This should be an option
+    Continuation: Continuation option }
 
 type ReadCommand =
   | Get of Table: string * TableKeys
@@ -296,6 +293,9 @@ module Option =
     match result with
     | Some v -> v
     | _ -> failwithf "shouldn't get here"
+
+  let ofString value =
+    if String.IsNullOrWhiteSpace value then None else Some value
 
 module WriteCommand =
 

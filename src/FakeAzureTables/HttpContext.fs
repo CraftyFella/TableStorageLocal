@@ -11,7 +11,7 @@ module private Request =
 
   let private queryString (request: Request) (key: string) =
     match request.Query.TryGetValue(key) with
-    | true, value -> value |> Array.tryHead
+    | true, value -> value |> Array.tryHead |> Option.bind (Option.ofString)
     | _ -> None
 
   let private (|QueryRequest|_|) (request: Request) =
