@@ -2,7 +2,7 @@ module get_entity
 
 open Expecto
 open System
-open Host
+open FakeAzureTables.Host
 open Microsoft.Azure.Cosmos.Table
 
 [<Tests>]
@@ -13,6 +13,7 @@ let get_entity =
         let table = createFakeTables ()
 
         let fields = allFieldTypes ()
+
         let insertResult =
           DynamicTableEntity("pk2", "r2k", "*", fields)
           |> TableOperation.Insert

@@ -1,67 +1,69 @@
-module Database
-open System
-open LiteDB
-open System.Collections.Generic
-open Domain
-open System.Text.RegularExpressions
+namespace FakeAzureTables
 
-let private randomString =
-  let chars =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+module Database =
+  open System
+  open LiteDB
+  open System.Collections.Generic
+  open Domain
+  open System.Text.RegularExpressions
 
-  let random = Random()
+  let private randomString =
+    let chars =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-  let generate length =
-    Array.init length (fun _ ->
-      (random.Next(0, chars.Length - 1), chars)
-      ||> Seq.item)
-    |> String
+    let random = Random()
 
-  generate
+    let generate length =
+      Array.init length (fun _ ->
+        (random.Next(0, chars.Length - 1), chars)
+        ||> Seq.item)
+      |> String
 
-type ILiteDatabase with
+    generate
 
-  member __.TablesCollection =
-    let col =
-      __.GetCollection<KeyValuePair<string, string>> "_tables"
+  type ILiteDatabase with
 
-    col.EnsureIndex(fun kvp -> kvp.Key) |> ignore
-    col
+    member __.TablesCollection =
+      let col =
+        __.GetCollection<KeyValuePair<string, string>> "_tables"
 
-  member __.GetCollectionName table =
-    __.TablesCollection.Find(fun kvp -> kvp.Key = table)
-    |> Seq.tryHead
-    |> Option.map (fun kvp -> kvp.Value)
+      col.EnsureIndex(fun kvp -> kvp.Key) |> ignore
+      col
 
-  member __.TableExists table =
-    __.GetCollectionName table |> Option.isSome
+    member __.GetCollectionName table =
+      __.TablesCollection.Find(fun kvp -> kvp.Key = table)
+      |> Seq.tryHead
+      |> Option.map (fun kvp -> kvp.Value)
 
-  member __.GetTable table =
-    let collectionName =
-      match __.GetCollectionName table with
-      | Some collectionName -> collectionName
-      | _ ->
-          let kvp = KeyValuePair(table, randomString 12)
-          __.TablesCollection.Insert kvp |> ignore
-          kvp.Value
+    member __.TableExists table =
+      __.GetCollectionName table |> Option.isSome
 
-    let col =
-      __.GetCollection<TableRow> collectionName
+    member __.GetTable table =
+      let collectionName =
+        match __.GetCollectionName table with
+        | Some collectionName -> collectionName
+        | _ ->
+            let kvp = KeyValuePair(table, randomString 12)
+            __.TablesCollection.Insert kvp |> ignore
+            kvp.Value
 
-    col.EnsureIndex(fun tableRow -> tableRow.Id)
-    |> ignore
-    col
+      let col =
+        __.GetCollection<TableRow> collectionName
 
-type ILiteCollection<'T> with
-  member __.TryInsert(row: 'T) =
-    try
-      __.Insert row |> ignore
-      true
-    with
-    | :? LiteException as ex when ex.ErrorCode = LiteException.INDEX_DUPLICATE_KEY -> false
-    | _ -> reraise ()
+      col.EnsureIndex(fun tableRow -> tableRow.Id)
+      |> ignore
+      col
 
-  member __.TryFindOne(predicate: BsonExpression) = __.Find predicate |> Seq.tryHead
+  type ILiteCollection<'T> with
+    member __.TryInsert(row: 'T) =
+      try
+        __.Insert row |> ignore
+        true
+      with
+      | :? LiteException as ex when ex.ErrorCode = LiteException.INDEX_DUPLICATE_KEY -> false
+      | _ -> reraise ()
 
-let tableNameIsValid tableName =
-  Regex.IsMatch(tableName, "^[A-Za-z0-9]{2,62}$")
+    member __.TryFindOne(predicate: BsonExpression) = __.Find predicate |> Seq.tryHead
+
+  let tableNameIsValid tableName =
+    Regex.IsMatch(tableName, "^[A-Za-z0-9]{2,62}$")

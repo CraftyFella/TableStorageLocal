@@ -2,7 +2,7 @@ module replace_entity
 
 open Expecto
 open System
-open Host
+open FakeAzureTables.Host
 open Microsoft.Azure.Cosmos.Table
 
 
@@ -48,7 +48,8 @@ let replaceTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.Message = "Precondition Failed") run  "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
+          e.Message = "Precondition Failed") run "expected exception"
 
       }
 

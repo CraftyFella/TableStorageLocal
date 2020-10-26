@@ -2,7 +2,7 @@ module insert_entity_concurrently
 
 open Expecto
 open System
-open Host
+open FakeAzureTables.Host
 open Microsoft.Azure.Cosmos.Table
 open System.Threading.Tasks
 

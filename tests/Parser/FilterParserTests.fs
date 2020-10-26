@@ -1,6 +1,7 @@
 module FilterParserTests
 
 open Expecto
+open FakeAzureTables
 open Domain
 open System
 
@@ -190,7 +191,7 @@ let filterParserTests =
                Filter.Property("Name", QueryComparison.Equal, FieldValue.String "Dave")))
 
         Expect.equal actual expected "unexpected result"
-      } 
+      }
 
       test "combined (Or))" {
 

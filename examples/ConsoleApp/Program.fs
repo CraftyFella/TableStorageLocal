@@ -1,6 +1,6 @@
 open System
 open Microsoft.Azure.Cosmos.Table
-open Host
+open FakeAzureTables.Host
 
 
 

@@ -1,7 +1,7 @@
 module list_tables
 
 open Expecto
-open Host
+open FakeAzureTables.Host
 
 [<Tests>]
 let addTableTests =

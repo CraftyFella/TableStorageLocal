@@ -1,8 +1,7 @@
 module HttpRequestParserTests
 
 open Expecto
-open System.Text.RegularExpressions
-open HttpContext
+open FakeAzureTables
 open Domain
 open System
 
