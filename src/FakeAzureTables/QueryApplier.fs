@@ -30,28 +30,33 @@ let query (col: ILiteCollection<TableRow>) filter limit (continuation: Continuat
     | Filter.All ->
         queryComparisonExpressionBuilder "$.Keys.PartitionKey" QueryComparison.NotEqual (FieldValue.String "--")
 
-  let expression = filterExpressionBuilder filter
+  let expression =
+    match continuation with
+    | Some continuation ->
+        let left =
+          queryComparisonExpressionBuilder
+            "$.Keys.PartitionKey + $.Keys.RowKey"
+            QueryComparison.GreaterThanOrEqual
+            (FieldValue.String
+              (continuation.NextPartitionKey
+               + continuation.NextRowKey))
 
-  let skip =
-    continuation
-    |> Option.map (fun c -> c.NextPartitionKey)
-    |> Option.map (int)
-    |> Option.defaultValue 0
+        Query.And(left, filterExpressionBuilder filter)
+    | None -> filterExpressionBuilder filter
 
   let rows =
-    col.Find(expression, limit = limit, skip = skip)
+    col.Find(expression, limit = limit + 1)
     |> Seq.toArray
 
   let next =
-    col.Find(expression, limit = 1, skip = (rows.Length + skip))
-    |> Seq.tryHead
+    if rows.Length = limit + 1 then rows |> Array.tryLast else None
 
   let continuation =
-    match rows.Length > 0 && next.IsSome with
-    | true ->
-        { NextPartitionKey = string (rows.Length + skip)
-          NextRowKey = string (rows.Length + skip) }
+    match next with
+    | Some next ->
+        { NextPartitionKey = next.Keys.PartitionKey
+          NextRowKey = next.Keys.RowKey }
         |> Some
     | _ -> None
 
-  rows, continuation
+  rows |> Array.truncate limit, continuation
