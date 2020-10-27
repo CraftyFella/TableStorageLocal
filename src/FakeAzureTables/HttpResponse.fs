@@ -83,7 +83,7 @@ Content-Transfer-Encoding: binary""" changesetId
             |> dict
           Body =
             Some
-              (sprintf "\n{\"odata.error\":{\"code\":\"EntityAlreadyExists\",\"message\":{\"lang\":\"en-US\",\"value\":\"The specified entity already exists.\\nRequestId:8c265fa5-9002-005c-5b56-ac59bc000000\\nTime:%s\"}}}"
+              (sprintf "{\"odata.error\":{\"code\":\"EntityAlreadyExists\",\"message\":{\"lang\":\"en-US\",\"value\":\"The specified entity already exists.\\nRequestId:8c265fa5-9002-005c-5b56-ac59bc000000\\nTime:%s\"}}}"
                  timestamp) }
 
   let private fromBatchCommandResponse (response: BatchCommandResponse): Http.Response =

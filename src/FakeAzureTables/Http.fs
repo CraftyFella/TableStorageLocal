@@ -92,6 +92,9 @@ module Http =
       sb.AppendLine() |> ignore
       sb.Append headers |> ignore
       sb.AppendLine() |> ignore
-      response.Body |> Option.iter (sb.Append >> ignore)
+      response.Body
+      |> Option.iter (fun body ->
+           sb.AppendLine() |> ignore
+           sb.Append body |> ignore)
       let raw = sb.ToString()
       raw
