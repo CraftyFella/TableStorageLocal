@@ -66,24 +66,43 @@ Content-Transfer-Encoding: binary""" changesetId
               "DataServiceVersion", "3.0;" ]
             |> dict
           Body = None }
-    | WriteCommandResponse.Conflict _ ->
+    | WriteCommandResponse.Conflict EntityAlreadyExists ->
         let now = DateTimeOffset.UtcNow
 
         let timestamp =
           now.ToString("s") + now.ToString(".fffZ")
 
         { StatusCode = StatusCode.Conflict
-          ContentType = None
+          ContentType = Some ContentType.ApplicationJson
           Headers =
             [ "X-Content-Type-Options", "nosniff"
               "Cache-Control", "no-cache"
               "Preference-Applied", "return-no-content"
-              "DataServiceVersion", "3.0;"
-              "Content-Type", "application/json;odata=minimalmetadata;streaming=true;charset=utf-8" ]
+              "DataServiceVersion", "3.0;" ]
             |> dict
           Body =
             Some
-              (sprintf "{\"odata.error\":{\"code\":\"EntityAlreadyExists\",\"message\":{\"lang\":\"en-US\",\"value\":\"The specified entity already exists.\\nRequestId:8c265fa5-9002-005c-5b56-ac59bc000000\\nTime:%s\"}}}"
+              (sprintf
+                "{\"odata.error\":{\"code\":\"EntityAlreadyExists\",\"message\":{\"lang\":\"en-US\",\"value\":\"The specified entity already exists.\\nRequestId:8c265fa5-9002-005c-5b56-ac59bc000000\\nTime:%s\"}}}"
+                 timestamp) }
+    | WriteCommandResponse.Conflict ResourceNotFound ->
+        let now = DateTimeOffset.UtcNow
+
+        let timestamp =
+          now.ToString("s") + now.ToString(".fffZ")
+
+        { StatusCode = StatusCode.NotFound
+          ContentType = Some ContentType.ApplicationJson
+          Headers =
+            [ "X-Content-Type-Options", "nosniff"
+              "Cache-Control", "no-cache"
+              "Preference-Applied", "return-no-content"
+              "DataServiceVersion", "3.0;" ]
+            |> dict
+          Body =
+            Some
+              (sprintf
+                "{\"odata.error\":{\"code\":\"ResourceNotFound\",\"message\":{\"lang\":\"en-US\",\"value\":\"The specified resource does not exist.\\nRequestId:8c265fa5-9002-005c-5b56-ac59bc000000\\nTime:%s\"}}}"
                  timestamp) }
 
   let private fromBatchCommandResponse (response: BatchCommandResponse): Http.Response =
@@ -95,9 +114,32 @@ Content-Transfer-Encoding: binary""" changesetId
     let seperator = changesetSeperator changesetId
     let blankLine = "\n\n"
 
+    let responses =
+      match response with
+      | WriteResponses responses -> responses |> List.map (fromWriteCommandResponse)
+      | BadRequest reason ->
+          let now = DateTimeOffset.UtcNow
+
+          let timestamp =
+            now.ToString("s") + now.ToString(".fffZ")
+
+          [ { StatusCode = StatusCode.BadRequest
+              ContentType = Some ContentType.ApplicationJsonODataStreaming
+              Headers =
+                [ "X-Content-Type-Options", "nosniff"
+                  "Cache-Control", "no-cache"
+                  "Preference-Applied", "return-no-content"
+                  "DataServiceVersion", "3.0;" ]
+                |> dict
+              Body =
+                Some
+                  (sprintf
+                    "{\"odata.error\":{\"code\":\"InvalidDuplicateRow\",\"message\":{\"lang\":\"en-US\",\"value\":\"1:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.\\nRequestId:b61748bc-6002-0006-1f59-ac5f3d000000\\nTime:%s\"}}}"
+                     timestamp) } ]
+
     let main =
-      response.CommandResponses
-      |> List.map (fromWriteCommandResponse >> Response.toRaw)
+      responses
+      |> List.map Response.toRaw
       |> List.map (sprintf "%s%s%s" seperator blankLine)
       |> fun line -> String.Join(sprintf "%s" blankLine, line)
 

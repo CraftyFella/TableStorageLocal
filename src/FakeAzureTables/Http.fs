@@ -63,12 +63,14 @@ module Http =
   [<RequireQualifiedAccess>]
   type ContentType =
     | ApplicationJson
+    | ApplicationJsonODataStreaming
     | MultipartMixedBatch of string
 
   module ContentType =
     let toRaw =
       function
       | ContentType.ApplicationJson -> "application/json; charset=utf-8"
+      | ContentType.ApplicationJsonODataStreaming -> "application/json;odata=minimalmetadata;streaming=true;charset=utf-8"
       | ContentType.MultipartMixedBatch batchId -> sprintf "multipart/mixed; boundary=batchresponse_%s" batchId
 
   [<RequireQualifiedAccess>]

@@ -107,6 +107,15 @@ module Domain =
     | InsertOrReplace of Table: string * TableRow
     | InsertOrMerge of Table: string * TableRow
 
+    member __.TableKeys =
+      match __ with
+      | Insert (_, { Keys = keys }) -> keys
+      | Replace (_, _, { Keys = keys }) -> keys
+      | Merge (_, _, { Keys = keys }) -> keys
+      | Delete (_, _, keys) -> keys
+      | InsertOrReplace (_, { Keys = keys }) -> keys
+      | InsertOrMerge (_, { Keys = keys }) -> keys
+
   type Continuation =
     { NextPartitionKey: string
       NextRowKey: string }
@@ -135,8 +144,8 @@ module Domain =
     | InvalidTableName
 
   type WriteConflictReason =
-    | KeyAlreadyExists
-    | EntityDoesntExist
+    | EntityAlreadyExists
+    | ResourceNotFound
     | UpdateConditionNotSatisfied
 
   type TableCommandResponse =
@@ -153,8 +162,11 @@ module Domain =
     | QueryResponse of TableRow array * Continuation option
     | NotFoundResponse
 
+  type BatchBadRequestReason = | InvalidDuplicateRow
+
   type BatchCommandResponse =
-    { CommandResponses: WriteCommandResponse list }
+    | WriteResponses of WriteCommandResponse list
+    | BadRequest of BatchBadRequestReason
 
   type CommandResult =
     | TableResponse of TableCommandResponse

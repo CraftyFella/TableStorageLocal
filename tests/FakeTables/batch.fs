@@ -108,7 +108,7 @@ let batchInsertTests =
 
       }
 
-      ptest "multiple changes with same row key" {
+      test "multiple changes with same row key" {
 
         (*
           HTTP/1.1 202 Accepted
@@ -152,47 +152,13 @@ let batchInsertTests =
         |> TableOperation.Insert
         |> batch.Add
 
-        let actual = batch |> table.ExecuteBatch
+        let run() = batch |> table.ExecuteBatch |> ignore
 
-        Expect.equal (actual |> Seq.length) 2 "unexpected result"
-        for batchItem in actual do
-          Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.RequestInformation.HttpStatusCode = 400) run "expected exception"
 
       }
 
       test "batch tries to insert a row which already exists" {
-
-        (*
-
-          HTTP/1.1 202 Accepted
-          Cache-Control: no-cache
-          Transfer-Encoding: chunked
-          Content-Type: multipart/mixed; boundary=batchresponse_b6f890b8-8144-46d3-8574-f09db410f594
-          Server: Windows-Azure-Table/1.0 Microsoft-HTTPAPI/2.0
-          x-ms-request-id: 8c9d6308-c002-0029-50b6-abde07000000
-          x-ms-version: 2017-07-29
-          X-Content-Type-Options: nosniff
-          Date: Mon, 26 Oct 2020 16:41:37 GMT
-          Connection: keep-alive
-
-          --batchresponse_b6f890b8-8144-46d3-8574-f09db410f594
-          Content-Type: multipart/mixed; boundary=changesetresponse_36817914-a3a0-43bb-9d66-8d670962fa3a
-
-          --changesetresponse_36817914-a3a0-43bb-9d66-8d670962fa3a
-          Content-Type: application/http
-          Content-Transfer-Encoding: binary
-
-          HTTP/1.1 409 Conflict
-          X-Content-Type-Options: nosniff
-          Cache-Control: no-cache
-          Preference-Applied: return-no-content
-          DataServiceVersion: 3.0;
-          Content-Type: application/json;odata=minimalmetadata;streaming=true;charset=utf-8
-
-          {"odata.error":{"code":"EntityAlreadyExists","message":{"lang":"en-US","value":"1:The specified entity already exists.\nRequestId:8c9d6308-c002-0029-50b6-abde07000000\nTime:2020-10-26T16:41:38.2990653Z"}}}
-          --changesetresponse_36817914-a3a0-43bb-9d66-8d670962fa3a--
-          --batchresponse_b6f890b8-8144-46d3-8574-f09db410f594--
-        *)
 
         let table = createFakeTables ()
         DynamicTableEntity("pk", "2", "*", allFieldTypes ())
@@ -211,7 +177,7 @@ let batchInsertTests =
         |> batch.Add
 
 
-        let run = fun () -> batch |> table.ExecuteBatch |> ignore
+        let run() = batch |> table.ExecuteBatch |> ignore
 
         Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.RequestInformation.HttpStatusCode = 409) run "expected exception"
 

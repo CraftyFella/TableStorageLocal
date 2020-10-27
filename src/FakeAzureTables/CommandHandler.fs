@@ -52,7 +52,7 @@ module CommandHandler =
         let etag = ETag.create ()
         match row |> TableRow.withETag etag |> table.TryInsert with
         | true -> WriteCommandResponse.Ack(row.Keys, etag)
-        | false -> WriteCommandResponse.Conflict KeyAlreadyExists
+        | false -> WriteCommandResponse.Conflict EntityAlreadyExists
     | Replace (table, existingETag, row) ->
         let table = db.GetTable table
         let etag = ETag.create ()
@@ -60,9 +60,9 @@ module CommandHandler =
         | TableRow.ExistsWithMatchingETag existingETag existingRow ->
             match table.Update(row |> TableRow.withETag etag) with
             | true -> WriteCommandResponse.Ack(row.Keys, etag)
-            | _ -> WriteCommandResponse.Conflict EntityDoesntExist
+            | _ -> WriteCommandResponse.Conflict ResourceNotFound
         | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
-        | _ -> WriteCommandResponse.Conflict EntityDoesntExist
+        | _ -> WriteCommandResponse.Conflict ResourceNotFound
     | Merge (table, existingETag, row) ->
         let table = db.GetTable table
         let etag = ETag.create ()
@@ -73,9 +73,9 @@ module CommandHandler =
                      |> TableRow.merge existingRow
                      |> TableRow.withETag etag) with
             | true -> WriteCommandResponse.Ack(row.Keys, etag)
-            | _ -> WriteCommandResponse.Conflict EntityDoesntExist
+            | _ -> WriteCommandResponse.Conflict ResourceNotFound
         | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
-        | _ -> WriteCommandResponse.Conflict EntityDoesntExist
+        | _ -> WriteCommandResponse.Conflict ResourceNotFound
     | Delete (table, existingETag, keys) ->
         let table = db.GetTable table
         match keys.Id |> table.TryFindById with
@@ -84,7 +84,7 @@ module CommandHandler =
             |> ignore
             WriteCommandResponse.Ack(keys, Missing)
         | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
-        | _ -> WriteCommandResponse.Conflict EntityDoesntExist
+        | _ -> WriteCommandResponse.Conflict ResourceNotFound
 
   let private applySelect fields (tableRows: TableRow array) =
     match fields with
@@ -118,26 +118,37 @@ module CommandHandler =
         QueryResponse(rows, continuation)
 
   let batchCommandHandler (db: ILiteDatabase) writeCommandHandler command =
-    db.BeginTrans() |> ignore
-    try
 
-      let commandResults =
-        command.Commands |> List.map writeCommandHandler
+    let containsDuplicateRowKeys =
+      let rowKeys =
+        command.Commands
+        |> List.distinctBy (fun c -> c.TableKeys.RowKey)
 
-      let commandResults =
-        match commandResults
-              |> List.forall WriteCommandResponse.isSuccess with
-        | true -> commandResults
-        | false ->
-            commandResults
-            |> List.filter (WriteCommandResponse.isSuccess >> not)
+      rowKeys.Length < command.Commands.Length
 
-      db.Commit() |> ignore
+    if containsDuplicateRowKeys then
+      BadRequest InvalidDuplicateRow
+    else
+      try
+        db.BeginTrans() |> ignore
 
-      { CommandResponses = commandResults }
-    with ex ->
-      db.Rollback() |> ignore
-      reraise ()
+        let commandResults =
+          command.Commands |> List.map writeCommandHandler
+
+        let commandResults =
+          match commandResults
+                |> List.forall WriteCommandResponse.isSuccess with
+          | true -> commandResults
+          | false ->
+              commandResults
+              |> List.filter (WriteCommandResponse.isSuccess >> not)
+
+        db.Commit() |> ignore
+
+        commandResults |> WriteResponses
+      with ex ->
+        db.Rollback() |> ignore
+        reraise ()
 
   let commandHandler (db: ILiteDatabase) command =
     let tableCommandHandler = tableCommandHandler db
