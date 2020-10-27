@@ -61,7 +61,8 @@ module CommandHandler =
             match table.Update(row |> TableRow.withETag etag) with
             | true -> WriteCommandResponse.Ack(row.Keys, etag)
             | _ -> WriteCommandResponse.NotFound ResourceNotFound
-        | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
+        | TableRow.ExistsWithDifferentETag existingETag _ ->
+            WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
         | _ -> WriteCommandResponse.NotFound ResourceNotFound
     | Merge (table, existingETag, row) ->
         let table = db.GetTable table
@@ -74,7 +75,8 @@ module CommandHandler =
                      |> TableRow.withETag etag) with
             | true -> WriteCommandResponse.Ack(row.Keys, etag)
             | _ -> WriteCommandResponse.NotFound ResourceNotFound
-        | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
+        | TableRow.ExistsWithDifferentETag existingETag _ ->
+            WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
         | _ -> WriteCommandResponse.NotFound ResourceNotFound
     | Delete (table, existingETag, keys) ->
         let table = db.GetTable table
@@ -83,7 +85,8 @@ module CommandHandler =
             table.DeleteMany(keys |> TableKeys.toBsonExpression)
             |> ignore
             WriteCommandResponse.Ack(keys, Missing)
-        | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
+        | TableRow.ExistsWithDifferentETag existingETag _ ->
+            WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
         | _ -> WriteCommandResponse.NotFound ResourceNotFound
 
   let private applySelect fields (tableRows: TableRow array) =
@@ -138,12 +141,13 @@ module CommandHandler =
         let commandResults =
           match commandResults
                 |> List.forall WriteCommandResponse.isSuccess with
-          | true -> commandResults
+          | true ->
+              db.Commit() |> ignore
+              commandResults
           | false ->
+              db.Rollback() |> ignore
               commandResults
               |> List.filter (WriteCommandResponse.isSuccess >> not)
-
-        db.Commit() |> ignore
 
         commandResults |> WriteResponses
       with ex ->
