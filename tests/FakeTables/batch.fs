@@ -145,10 +145,15 @@ let batchInsertTests =
         |> TableOperation.Insert
         |> batch.Add
 
-
         let run() = batch |> table.ExecuteBatch |> ignore
 
         Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.RequestInformation.HttpStatusCode = 409) run "expected exception"
+
+        let actual =
+          TableOperation.Retrieve<DynamicTableEntity>("pk", "1")
+          |> table.Execute
+
+        Expect.equal (actual.HttpStatusCode) 404 "batch should roll back any work"
 
       }
 
