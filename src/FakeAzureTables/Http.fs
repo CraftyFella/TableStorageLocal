@@ -70,7 +70,8 @@ module Http =
     let toRaw =
       function
       | ContentType.ApplicationJson -> "application/json; charset=utf-8"
-      | ContentType.ApplicationJsonODataStreaming -> "application/json;odata=minimalmetadata;streaming=true;charset=utf-8"
+      | ContentType.ApplicationJsonODataStreaming ->
+          "application/json;odata=minimalmetadata;streaming=true;charset=utf-8"
       | ContentType.MultipartMixedBatch batchId -> sprintf "multipart/mixed; boundary=batchresponse_%s" batchId
 
   [<RequireQualifiedAccess>]
@@ -93,6 +94,12 @@ module Http =
       sb.Append rawStatusCode |> ignore
       sb.AppendLine() |> ignore
       sb.Append headers |> ignore
+      response.ContentType
+      |> Option.iter (fun cont ->
+           sb.Append
+             (sb.AppendLine() |> ignore
+              sprintf "Content-Type: %s" (cont |> ContentType.toRaw))
+           |> ignore)
       sb.AppendLine() |> ignore
       response.Body
       |> Option.iter (fun body ->

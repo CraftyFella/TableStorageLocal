@@ -60,9 +60,9 @@ module CommandHandler =
         | TableRow.ExistsWithMatchingETag existingETag existingRow ->
             match table.Update(row |> TableRow.withETag etag) with
             | true -> WriteCommandResponse.Ack(row.Keys, etag)
-            | _ -> WriteCommandResponse.Conflict ResourceNotFound
-        | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
-        | _ -> WriteCommandResponse.Conflict ResourceNotFound
+            | _ -> WriteCommandResponse.NotFound ResourceNotFound
+        | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
+        | _ -> WriteCommandResponse.NotFound ResourceNotFound
     | Merge (table, existingETag, row) ->
         let table = db.GetTable table
         let etag = ETag.create ()
@@ -73,9 +73,9 @@ module CommandHandler =
                      |> TableRow.merge existingRow
                      |> TableRow.withETag etag) with
             | true -> WriteCommandResponse.Ack(row.Keys, etag)
-            | _ -> WriteCommandResponse.Conflict ResourceNotFound
-        | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
-        | _ -> WriteCommandResponse.Conflict ResourceNotFound
+            | _ -> WriteCommandResponse.NotFound ResourceNotFound
+        | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
+        | _ -> WriteCommandResponse.NotFound ResourceNotFound
     | Delete (table, existingETag, keys) ->
         let table = db.GetTable table
         match keys.Id |> table.TryFindById with
@@ -83,8 +83,8 @@ module CommandHandler =
             table.DeleteMany(keys |> TableKeys.toBsonExpression)
             |> ignore
             WriteCommandResponse.Ack(keys, Missing)
-        | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.Conflict UpdateConditionNotSatisfied
-        | _ -> WriteCommandResponse.Conflict ResourceNotFound
+        | TableRow.ExistsWithDifferentETag existingETag _ -> WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
+        | _ -> WriteCommandResponse.NotFound ResourceNotFound
 
   let private applySelect fields (tableRows: TableRow array) =
     match fields with

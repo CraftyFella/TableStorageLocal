@@ -24,7 +24,7 @@ let mergeTests =
           DynamicTableEntity("pk2", "r2k", actual.Etag, stringFieldType "Updated Value")
           |> TableOperation.Merge
           |> table.Execute
-       
+
         let actualRetrieve =
           TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")
           |> table.Execute
@@ -52,7 +52,7 @@ let mergeTests =
           |> ignore
 
         Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
-          e.Message = "Precondition Failed") run "expected exception"
+          e.RequestInformation.HttpStatusCode = 412) run "expected exception"
 
       }
 

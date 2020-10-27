@@ -143,10 +143,9 @@ module Domain =
     | TableAlreadyExists
     | InvalidTableName
 
-  type WriteConflictReason =
-    | EntityAlreadyExists
-    | ResourceNotFound
-    | UpdateConditionNotSatisfied
+  type WriteConflictReason = | EntityAlreadyExists
+  type WritePreconditionFailedReason = | UpdateConditionNotSatisfied
+  type WriteNotFoundReason = | ResourceNotFound
 
   type TableCommandResponse =
     | Ack
@@ -155,6 +154,8 @@ module Domain =
 
   type WriteCommandResponse =
     | Ack of TableKeys * ETag
+    | NotFound of WriteNotFoundReason
+    | PreconditionFailed of WritePreconditionFailedReason
     | Conflict of WriteConflictReason
 
   type ReadCommandResponse =

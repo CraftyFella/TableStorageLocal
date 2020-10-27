@@ -110,37 +110,6 @@ let batchInsertTests =
 
       test "multiple changes with same row key" {
 
-        (*
-          HTTP/1.1 202 Accepted
-          Cache-Control: no-cache
-          Transfer-Encoding: chunked
-          Content-Type: multipart/mixed; boundary=batchresponse_c8b55e8d-9f3e-4173-baaf-d815fde35c74
-          Server: Windows-Azure-Table/1.0 Microsoft-HTTPAPI/2.0
-          x-ms-request-id: 0b0b72c3-4002-0033-44b5-abf168000000
-          x-ms-version: 2017-07-29
-          X-Content-Type-Options: nosniff
-          Date: Mon, 26 Oct 2020 16:31:21 GMT
-          Connection: keep-alive
-
-          --batchresponse_c8b55e8d-9f3e-4173-baaf-d815fde35c74
-          Content-Type: multipart/mixed; boundary=changesetresponse_1515a9c3-1172-4d7d-aa1c-9ba1019da799
-
-          --changesetresponse_1515a9c3-1172-4d7d-aa1c-9ba1019da799
-          Content-Type: application/http
-          Content-Transfer-Encoding: binary
-
-          HTTP/1.1 400 Bad Request
-          X-Content-Type-Options: nosniff
-          Cache-Control: no-cache
-          Preference-Applied: return-no-content
-          DataServiceVersion: 3.0;
-          Content-Type: application/json;odata=minimalmetadata;streaming=true;charset=utf-8
-
-          {"odata.error":{"code":"InvalidDuplicateRow","message":{"lang":"en-US","value":"1:The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.\nRequestId:0b0b72c3-4002-0033-44b5-abf168000000\nTime:2020-10-26T16:31:22.2128155Z"}}}
-          --changesetresponse_1515a9c3-1172-4d7d-aa1c-9ba1019da799--
-          --batchresponse_c8b55e8d-9f3e-4173-baaf-d815fde35c74--
-        *)
-
         let table = createFakeTables ()
         let batch = TableBatchOperation()
 
