@@ -48,7 +48,10 @@ module Database =
             kvp.Value
 
 
-      __.GetCollection<TableRow> collectionName
+      let col =
+        __.GetCollection<TableRow> collectionName
+
+      col
 
   type ILiteCollection<'T> with
     member __.TryInsert(row: 'T) =
@@ -60,7 +63,9 @@ module Database =
       | _ -> reraise ()
 
     member __.TryFindOne(predicate: BsonExpression) = __.Find predicate |> Seq.tryHead
-    member __.TryFindById(id: string) = __.TryFindOne (Query.EQ("_id", BsonValue id))
+
+    member __.TryFindById(id: string) =
+      __.TryFindOne(Query.EQ("_id", BsonValue id))
 
   let tableNameIsValid tableName =
-    Regex.IsMatch(tableName, "^[A-Za-z0-9]{2,62}$")
+    Regex.IsMatch(tableName, "^[A-Za-z][A-Za-z0-9]{2,62}$")

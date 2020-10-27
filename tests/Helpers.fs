@@ -38,7 +38,7 @@ let createFakeTables () =
   let tables = new FakeTables()
 
   let table =
-    tables.Client.GetTableReference(Guid.NewGuid().ToString("N"))
+    tables.Client.GetTableReference("t" + Guid.NewGuid().ToString("N"))
 
   table.CreateIfNotExists() |> ignore
   table

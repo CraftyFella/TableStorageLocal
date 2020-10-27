@@ -160,7 +160,7 @@ let batchInsertTests =
 
       }
 
-      ptest "batch tries to insert a row which already exists" {
+      test "batch tries to insert a row which already exists" {
 
         (*
 
@@ -210,12 +210,10 @@ let batchInsertTests =
         |> TableOperation.Insert
         |> batch.Add
 
-        // TODO: Blows up here
-        let actual = batch |> table.ExecuteBatch
 
-        Expect.equal (actual |> Seq.length) 2 "unexpected result"
-        for batchItem in actual do
-          Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
+        let run = fun () -> batch |> table.ExecuteBatch |> ignore
+
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.RequestInformation.HttpStatusCode = 409) run "expected exception"
 
       }
 

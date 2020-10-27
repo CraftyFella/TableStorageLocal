@@ -67,15 +67,24 @@ Content-Transfer-Encoding: binary""" changesetId
             |> dict
           Body = None }
     | WriteCommandResponse.Conflict _ ->
+        let now = DateTimeOffset.UtcNow
+
+        let timestamp =
+          now.ToString("s") + now.ToString(".fffZ")
+
         { StatusCode = StatusCode.Conflict
           ContentType = None
           Headers =
             [ "X-Content-Type-Options", "nosniff"
               "Cache-Control", "no-cache"
               "Preference-Applied", "return-no-content"
-              "DataServiceVersion", "3.0;" ]
+              "DataServiceVersion", "3.0;"
+              "Content-Type", "application/json;odata=minimalmetadata;streaming=true;charset=utf-8" ]
             |> dict
-          Body = None }
+          Body =
+            Some
+              (sprintf "\n{\"odata.error\":{\"code\":\"EntityAlreadyExists\",\"message\":{\"lang\":\"en-US\",\"value\":\"The specified entity already exists.\\nRequestId:8c265fa5-9002-005c-5b56-ac59bc000000\\nTime:%s\"}}}"
+                 timestamp) }
 
   let private fromBatchCommandResponse (response: BatchCommandResponse): Http.Response =
 

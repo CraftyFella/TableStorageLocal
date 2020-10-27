@@ -163,6 +163,7 @@ module Domain =
     | BatchResponse of BatchCommandResponse
     | NotFoundResponse
 
+  [<RequireQualifiedAccess>]
   module TableFields =
     open Newtonsoft.Json.Linq
 
@@ -238,6 +239,7 @@ module Domain =
       |> dict
       |> Dictionary
 
+  [<RequireQualifiedAccess>]
   module TableRow =
     open Newtonsoft.Json.Linq
 
@@ -279,6 +281,7 @@ module Domain =
                                                           <> (existingETag |> ETag.serialize) -> Some existingRow
       | _ -> None
 
+  [<RequireQualifiedAccess>]
   module Result =
     let isOk result =
       match result with
@@ -290,6 +293,7 @@ module Domain =
       | Ok v -> v
       | _ -> failwithf "shouldn't get here"
 
+  [<RequireQualifiedAccess>]
   module Option =
 
     let valueOf result =
@@ -300,6 +304,7 @@ module Domain =
     let ofString value =
       if String.IsNullOrWhiteSpace value then None else Some value
 
+  [<RequireQualifiedAccess>]
   module WriteCommand =
 
     let isWriteCommand command =
@@ -311,3 +316,10 @@ module Domain =
       match command with
       | Write c -> c
       | _ -> failwithf "shouldn't get here"
+
+  [<RequireQualifiedAccess>]
+  module WriteCommandResponse =
+    let isSuccess (response: WriteCommandResponse) =
+      match response with
+      | Ack _ -> true
+      | _ -> false

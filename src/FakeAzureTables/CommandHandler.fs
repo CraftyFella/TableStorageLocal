@@ -117,25 +117,38 @@ module CommandHandler =
 
         QueryResponse(rows, continuation)
 
+  let batchCommandHandler (db: ILiteDatabase) writeCommandHandler command =
+    db.BeginTrans() |> ignore
+    try
+
+      let commandResults =
+        command.Commands |> List.map writeCommandHandler
+
+      let commandResults =
+        match commandResults
+              |> List.forall WriteCommandResponse.isSuccess with
+        | true -> commandResults
+        | false ->
+            commandResults
+            |> List.filter (WriteCommandResponse.isSuccess >> not)
+
+      db.Commit() |> ignore
+
+      { CommandResponses = commandResults }
+    with ex ->
+      db.Rollback() |> ignore
+      reraise ()
+
   let commandHandler (db: ILiteDatabase) command =
     let tableCommandHandler = tableCommandHandler db
     let writeCommandHandler = writeCommandHandler db
     let readCommandHandler = readCommandHandler db
+
+    let batchCommandHandler =
+      batchCommandHandler db writeCommandHandler
+
     match command with
     | Table command -> command |> tableCommandHandler |> TableResponse
     | Write command -> command |> writeCommandHandler |> WriteResponse
     | Read command -> command |> readCommandHandler |> ReadResponse
-    | Batch batch ->
-        db.BeginTrans() |> ignore
-        try
-
-          let commandResults =
-            batch.Commands |> List.map writeCommandHandler
-
-          db.Commit() |> ignore
-
-          { CommandResponses = commandResults }
-          |> BatchResponse
-        with ex ->
-          db.Rollback() |> ignore
-          reraise ()
+    | Batch command -> command |> batchCommandHandler |> BatchResponse
