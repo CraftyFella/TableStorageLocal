@@ -1,7 +1,7 @@
 module add_table
 
 open Expecto
-open FakeAzureTables.Host
+open FakeAzureTables
 
 [<Tests>]
 let addTableTests =
@@ -45,8 +45,7 @@ let addTableTests =
       test "less than 3 alpha" {
         let tables = new FakeTables()
 
-        let table =
-          tables.Client.GetTableReference "ab"
+        let table = tables.Client.GetTableReference "ab"
 
         let actual = table.CreateIfNotExists()
         Expect.equal actual false "unexpected result"

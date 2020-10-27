@@ -2,7 +2,7 @@ module delete_entity
 
 open Expecto
 open System
-open FakeAzureTables.Host
+open FakeAzureTables
 open Microsoft.Azure.Cosmos.Table
 
 
@@ -44,8 +44,8 @@ let deleteTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.RequestInformation.HttpStatusCode = 404) run
-          "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
+          e.RequestInformation.HttpStatusCode = 404) run "expected exception"
 
       }
       test "row exists and correct etag used is accepted" {

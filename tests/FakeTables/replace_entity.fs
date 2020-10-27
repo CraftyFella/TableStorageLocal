@@ -2,7 +2,7 @@ module replace_entity
 
 open Expecto
 open System
-open FakeAzureTables.Host
+open FakeAzureTables
 open Microsoft.Azure.Cosmos.Table
 
 

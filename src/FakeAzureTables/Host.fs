@@ -1,18 +1,20 @@
 namespace FakeAzureTables
 
-module Host =
+open LiteDB
+open LiteDB.Engine
+open System
+open Microsoft.AspNetCore.Hosting
 
-  open System
-  open Microsoft.AspNetCore.Hosting
+[<AutoOpen>]
+module private Host =
+
   open System.Net.Sockets
   open System.Net
   open Microsoft.AspNetCore.Builder
   open HttpContext
   open CommandHandler
-  open LiteDB
-  open LiteDB.Engine
 
-  let private findPort () =
+  let findPort () =
     TcpListener(IPAddress.Loopback, 0)
     |> fun l ->
          l.Start()
@@ -21,49 +23,48 @@ module Host =
               l.Stop()
               p
 
-  let private app db (appBuilder: IApplicationBuilder) =
+  let app db (appBuilder: IApplicationBuilder) =
     let inner = commandHandler db |> httpHandler
     appBuilder.Run(fun ctx -> exceptionLoggingHttpHandler inner ctx)
 
-  type FakeTables(?connectionString, ?port) =
+type FakeTables(connectionString: string, port: int) =
 
-    let connectionString =
-      connectionString
-      |> Option.defaultValue "filename=:memory:"
+  let db =
+    new LiteDatabase(connectionString, Bson.FieldValue.mapper ())
 
-    let db =
-      new LiteDatabase(connectionString, Bson.FieldValue.mapper ())
+  let url = sprintf "http://127.0.0.1:%i" port
 
-    let port = port |> Option.defaultWith findPort
-    let url = sprintf "http://127.0.0.1:%i" port
+  let mutable connectionString =
+    sprintf
+      "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://%s:%i/devstoreaccount1;"
+      (if Environment.GetEnvironmentVariable("FAKEAZURETABLES_USEPROXY")
+          <> null then
+        "localhost.charlesproxy.com"
+       else
+         "localhost")
+      port
 
-    let mutable connectionString =
-      sprintf
-        "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://%s:%i/devstoreaccount1;"
-        (if Environment.GetEnvironmentVariable("FAKEAZURETABLES_USEPROXY")
-            <> null then
-          "localhost.charlesproxy.com"
-         else
-           "localhost")
-        port
+  let webHost =
+    WebHostBuilder().Configure(fun appBuilder -> app db appBuilder).UseUrls(url)
+      .UseKestrel(fun options -> options.AllowSynchronousIO <- true).Build()
 
-    let webHost =
-      WebHostBuilder().Configure(fun appBuilder -> app db appBuilder).UseUrls(url)
-        .UseKestrel(fun options -> options.AllowSynchronousIO <- true).Build()
+  do
+    // Case Sensitive
+    db.Rebuild(RebuildOptions(Collation = Collation.Binary))
+    |> ignore
+    if Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
+       <> null then
+      connectionString <- Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
+    else
+      webHost.Start()
 
-    do
-      // Case Sensitive
-      db.Rebuild(RebuildOptions(Collation = Collation.Binary))
-      |> ignore
-      if Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
-         <> null then
-        connectionString <- Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
-      else
-        webHost.Start()
+  new() = new FakeTables("filename=:memory:", findPort ())
+  new(connectionString: string) = new FakeTables(connectionString, findPort ())
+  new(port: int) = new FakeTables("filename=:memory:", port)
 
-    member __.ConnectionString = connectionString
+  member __.ConnectionString = connectionString
 
-    interface IDisposable with
-      member __.Dispose() =
-        db.Dispose()
-        webHost.Dispose()
+  interface IDisposable with
+    member __.Dispose() =
+      db.Dispose()
+      webHost.Dispose()

@@ -1,7 +1,7 @@
 [<AutoOpen>]
 module Helpers
 
-open FakeAzureTables.Host
+open FakeAzureTables
 open Microsoft.Azure.Cosmos.Table
 open System
 open System.Collections.Generic

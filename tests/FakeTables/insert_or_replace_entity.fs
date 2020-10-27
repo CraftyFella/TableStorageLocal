@@ -45,10 +45,61 @@ let insertOrReplaceTests =
         Expect.equal result.["StringField"] (fields.["StringField"]) ""
       }
 
+      test "if-match header supplied with correct etag is accepted" {
+        let table = createFakeTables ()
+
+        let fields = allFieldTypes ()
+
+        let insertResult =
+          DynamicTableEntity("pk2", "r2k", "*", fields)
+          |> TableOperation.Insert
+          |> table.Execute
+
+        fields.["StringField"] <- EntityProperty.GeneratePropertyForString "updated"
+
+        let oc =
+          OperationContext(UserHeaders = ([ "if-match", insertResult.Etag ] |> dict))
+
+        let actual =
+          DynamicTableEntity("pk2", "r2k", null, fields)
+          |> TableOperation.InsertOrReplace
+          |> (fun x -> table.Execute(x, null, oc))
+
+        Expect.equal (actual.HttpStatusCode) 204 "unexpected result"
+      }
+
+      test "if-match header supplied with old etag is rejected" {
+        let table = createFakeTables ()
+
+        let oldEtag = "W/\"datetime'2020-10-16T10:37:44Z'\""
+
+        let fields = allFieldTypes ()
+
+        let insertResult =
+          DynamicTableEntity("pk2", "r2k", "*", fields)
+          |> TableOperation.Insert
+          |> table.Execute
+
+        fields.["StringField"] <- EntityProperty.GeneratePropertyForString "updated"
+
+        let oc =
+          OperationContext(UserHeaders = ([ "if-match", oldEtag ] |> dict))
+
+        let run () =
+          DynamicTableEntity("pk2", "r2k", null, fields)
+          |> TableOperation.InsertOrReplace
+          |> (fun x -> table.Execute(x, null, oc))
+          |> ignore
+
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
+          e.Message = "Precondition Failed") run "expected exception"
+      }
+
       test "inserted row is retrievable" {
         let table = createFakeTables ()
         let fields = allFieldTypes ()
-        let insertedResult = 
+
+        let insertedResult =
           DynamicTableEntity("pk2", "r2k", "*", fields)
           |> TableOperation.InsertOrReplace
           |> table.Execute

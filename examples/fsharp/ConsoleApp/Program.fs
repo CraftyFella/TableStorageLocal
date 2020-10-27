@@ -1,8 +1,6 @@
 open System
 open Microsoft.Azure.Cosmos.Table
-open FakeAzureTables.Host
-
-
+open FakeAzureTables
 
 [<EntryPoint>]
 let main argv =
@@ -43,14 +41,6 @@ let main argv =
   |> table.Execute
   |> ignore
 
-  // let a = TableQuery.GenerateFilterConditionForDate("Field1", QueryComparisons.GreaterThanOrEqual, DateTimeOffset.UtcNow)
-  // let b = TableQuery.GenerateFilterConditionForDate("Field2", QueryComparisons.GreaterThanOrEqual, DateTimeOffset.UtcNow)
-  // let rowkey = TableQuery.GenerateFilterCondition("rowkey", QueryComparisons.Equal, "value")
-  // let combined = TableQuery.CombineFilters(a, TableOperators.And, b)
-  // let combined2 = TableQuery.CombineFilters(rowkey, TableOperators.And, combined)
-  // let query = TableQuery<DynamicTableEntity>().Where combined2
-  // let filter = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk")
-  // let filter = TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, "rk")
   let left = TableQuery.GenerateFilterConditionForDouble("FloatField", QueryComparisons.Equal, 2.)
   let right = TableQuery.GenerateFilterConditionForLong("LongField", QueryComparisons.GreaterThanOrEqual, 2L)
   let filter = TableQuery.CombineFilters(left, Microsoft.Azure.Cosmos.Table.TableOperators.Or, right)
