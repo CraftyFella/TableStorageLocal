@@ -1,5 +1,7 @@
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1.402 AS build-env
 ADD . /src
+WORKDIR /src
+RUN dotnet tool restore && dotnet paket install
 RUN dotnet publish /src/examples/fsharp/Azurite -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/core/runtime:3.1-alpine
