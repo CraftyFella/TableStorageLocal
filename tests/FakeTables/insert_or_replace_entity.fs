@@ -1,4 +1,4 @@
-module FakeTablesTests
+module LocalTablesTests
 
 open Expecto
 open Microsoft.Azure.Cosmos.Table
@@ -8,7 +8,7 @@ let insertOrReplaceTests =
   testList
     "insertOrReplace"
     [ test "row doesn't exist is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let actual =
           DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
@@ -20,7 +20,7 @@ let insertOrReplaceTests =
       }
 
       test "row exists is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 
@@ -46,7 +46,7 @@ let insertOrReplaceTests =
       }
 
       test "if-match header supplied with correct etag is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 
@@ -69,7 +69,7 @@ let insertOrReplaceTests =
       }
 
       test "if-match header supplied with old etag is rejected" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let oldEtag = "W/\"datetime'2020-10-16T10:37:44Z'\""
 
@@ -96,7 +96,7 @@ let insertOrReplaceTests =
       }
 
       test "inserted row is retrievable" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
         let fields = allFieldTypes ()
 
         let insertedResult =

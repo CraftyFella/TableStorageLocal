@@ -9,7 +9,7 @@ let mergeTests =
   testList
     "merge"
     [ test "row exists and correct etag used is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let actual =
           DynamicTableEntity("pk2", "r2k", null, stringFieldType "Inserted Value")
@@ -36,7 +36,7 @@ let mergeTests =
       }
 
       test "row exists and old etag used is rejected" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let oldEtag = "W/\"datetime'2020-10-16T10:37:44Z'\""
 
@@ -57,7 +57,7 @@ let mergeTests =
       }
 
       test "row exists and wildcard (*) etag used is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let wildcardEtag = "*"
 
@@ -76,7 +76,7 @@ let mergeTests =
       }
 
       test "merge single property" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 
@@ -100,7 +100,7 @@ let mergeTests =
       }
 
       test "add single property" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 
@@ -125,7 +125,7 @@ let mergeTests =
       }
 
       test "update single property" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 

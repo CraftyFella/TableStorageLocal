@@ -8,7 +8,7 @@ let insertTests =
   testList
     "Insert"
     [ test "row doesn't exist is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let actual =
           DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
@@ -20,7 +20,7 @@ let insertTests =
       }
 
       test "row exists causes conflict exception" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
         |> TableOperation.Insert
@@ -39,7 +39,7 @@ let insertTests =
       }
 
       test "row exists (Different case) is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
         |> TableOperation.Insert
@@ -56,7 +56,7 @@ let insertTests =
       }
 
       test "inserted row is retrievable" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
         let fields = allFieldTypes ()
 
         let insertedResult =

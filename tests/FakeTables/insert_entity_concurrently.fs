@@ -2,7 +2,7 @@ module insert_entity_concurrently
 
 open Expecto
 open System
-open FakeAzureTables
+open TableStorageLocal
 open Microsoft.Azure.Cosmos.Table
 open System.Threading.Tasks
 
@@ -11,7 +11,7 @@ let insertTests =
   testList
     "insert_entity_concurrently"
     [ test "rows are inserted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let tasks =
           Array.init 10 (fun _ ->

@@ -1,4 +1,4 @@
-namespace FakeAzureTables
+namespace TableStorageLocal
 
 module HttpContext =
 
@@ -13,7 +13,10 @@ module HttpContext =
 
     let private queryString (request: Request) (key: string) =
       match request.Query.TryGetValue(key) with
-      | true, value -> value |> Array.tryHead |> Option.bind (Option.ofString)
+      | true, value ->
+          value
+          |> Array.tryHead
+          |> Option.bind (Option.ofString)
       | _ -> None
 
     let private (|QueryRequest|_|) (request: Request) =
@@ -227,5 +230,4 @@ module HttpContext =
     |> Option.map commandHandler
     |> Option.defaultValue CommandResult.NotFoundResponse
     |> HttpResponse.fromCommandResponse
-    |> HttpResponse.applyToCtx ctx
-    :> Task
+    |> HttpResponse.applyToCtx ctx :> Task

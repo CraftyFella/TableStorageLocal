@@ -2,7 +2,7 @@ module delete_entity
 
 open Expecto
 open System
-open FakeAzureTables
+open TableStorageLocal
 open Microsoft.Azure.Cosmos.Table
 
 
@@ -11,7 +11,7 @@ let deleteTests =
   testList
     "delete_entity"
     [ test "entity exists" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let entity =
           DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
@@ -34,7 +34,7 @@ let deleteTests =
 
       }
       test "entity doesnt exist" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let entity =
           DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
@@ -49,7 +49,7 @@ let deleteTests =
 
       }
       test "row exists and correct etag used is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let actual =
           DynamicTableEntity("pk2", "r2k", null, stringFieldType "Inserted Value")
@@ -67,7 +67,7 @@ let deleteTests =
       }
 
       test "row exists and old etag used is rejected" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let oldEtag = "W/\"datetime'2020-10-16T10:37:44Z'\""
 
@@ -88,7 +88,7 @@ let deleteTests =
       }
 
       test "row exists and wildcard (*) etag used is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let wildcardEtag = "*"
 

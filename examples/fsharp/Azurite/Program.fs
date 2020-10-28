@@ -1,5 +1,5 @@
 open System
-open FakeAzureTables
+open TableStorageLocal
 
-let fakeTablesHost = new FakeTables("data.db", 10002)
+let fakeTablesHost = new LocalTables("data.db", 10002)
 Console.ReadLine() |> ignore

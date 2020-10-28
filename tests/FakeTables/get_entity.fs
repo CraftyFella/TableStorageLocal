@@ -2,7 +2,7 @@ module get_entity
 
 open Expecto
 open System
-open FakeAzureTables
+open TableStorageLocal
 open Microsoft.Azure.Cosmos.Table
 
 [<Tests>]
@@ -10,7 +10,7 @@ let get_entity =
   testList
     "get_entity"
     [ test "entity exists" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 
@@ -37,7 +37,7 @@ let get_entity =
 
       }
       test "entity doesnt exist" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let actual =
           TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")

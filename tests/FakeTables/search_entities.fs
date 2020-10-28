@@ -9,7 +9,7 @@ let searchTests =
   testList
     "search_entities"
     [ test "all with matching partition key" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -51,7 +51,7 @@ let searchTests =
       }
 
       test "all rows" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -87,7 +87,7 @@ let searchTests =
       }
 
       test "all with matching row key" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -127,7 +127,7 @@ let searchTests =
       }
 
       test "partionKey OR rowKey" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -173,7 +173,7 @@ let searchTests =
       }
 
       test "partionKey AND rowKey" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -219,7 +219,7 @@ let searchTests =
       }
 
       test "property String search" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -259,7 +259,7 @@ let searchTests =
       }
 
       test "property Int search" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -299,7 +299,7 @@ let searchTests =
       }
 
       test "no filter" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -328,7 +328,7 @@ let searchTests =
       }
 
       test "no matches" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let filter =
           TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
@@ -346,7 +346,7 @@ let searchTests =
       }
 
       test "Take 1 row" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -388,7 +388,7 @@ let searchTests =
       }
 
       test "Take more than rows in db" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -418,7 +418,7 @@ let searchTests =
       }
 
       test "Select single field" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -460,7 +460,7 @@ let searchTests =
       }
 
       test "Select empty" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -501,7 +501,7 @@ let searchTests =
       }
 
       test "Paging" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -534,7 +534,7 @@ let searchTests =
       }
 
       test "Paging non sequential row keys" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -567,7 +567,7 @@ let searchTests =
       }
 
       test "Paging no filter" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -597,7 +597,7 @@ let searchTests =
       }
 
       test "Paging size 2 no filter" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity
@@ -627,7 +627,7 @@ let searchTests =
       }
 
       test "Paging mixture of cases" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let insert entity =
           entity

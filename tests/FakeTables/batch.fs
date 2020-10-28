@@ -10,7 +10,7 @@ let batchMergeTests =
     [ test "merge existing row is accepted" {
 
 
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let entity =
           DynamicTableEntity("pk2", "r2k", null, stringFieldType "Inserted Value")
@@ -39,7 +39,7 @@ let batchDeleteTests =
   testList
     "batch delete"
     [ test "delete existing row is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let entity =
           DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
@@ -63,7 +63,7 @@ let batchInsertTests =
   testList
     "batch insert"
     [ test "row doesn't exist is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
         let batch = TableBatchOperation()
 
         createEntityWithString "pk2" "5" "thing"
@@ -83,7 +83,7 @@ let batchInsertTests =
       }
 
       test "2 batches in a row" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
         let batch = TableBatchOperation()
 
         createEntityWithString "pk" "1" "rowValue"
@@ -110,7 +110,7 @@ let batchInsertTests =
 
       test "multiple changes with same row key" {
 
-        let table = createFakeTables ()
+        let table = createLocalTables ()
         let batch = TableBatchOperation()
 
         createEntityWithString "pk" "1" "rowValue"
@@ -121,15 +121,16 @@ let batchInsertTests =
         |> TableOperation.Insert
         |> batch.Add
 
-        let run() = batch |> table.ExecuteBatch |> ignore
+        let run () = batch |> table.ExecuteBatch |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.RequestInformation.HttpStatusCode = 400) run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
+          e.RequestInformation.HttpStatusCode = 400) run "expected exception"
 
       }
 
       test "batch tries to insert a row which already exists" {
 
-        let table = createFakeTables ()
+        let table = createLocalTables ()
         DynamicTableEntity("pk", "2", "*", allFieldTypes ())
         |> TableOperation.Insert
         |> table.Execute
@@ -145,9 +146,10 @@ let batchInsertTests =
         |> TableOperation.Insert
         |> batch.Add
 
-        let run() = batch |> table.ExecuteBatch |> ignore
+        let run () = batch |> table.ExecuteBatch |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e -> e.RequestInformation.HttpStatusCode = 409) run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
+          e.RequestInformation.HttpStatusCode = 409) run "expected exception"
 
         let actual =
           TableOperation.Retrieve<DynamicTableEntity>("pk", "1")
@@ -158,7 +160,7 @@ let batchInsertTests =
       }
 
       test "inserted rows are retrievable" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
         let batch = TableBatchOperation()
 
         createEntityWithString "pk" "1" "rowValue"

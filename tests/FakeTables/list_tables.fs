@@ -1,14 +1,14 @@
 module list_tables
 
 open Expecto
-open FakeAzureTables
+open TableStorageLocal
 
 [<Tests>]
 let addTableTests =
   testList
     "list_tables"
     [ test "table returned" {
-        let tables = new FakeTables()
+        let tables = new LocalTables()
         let table = tables.Client.GetTableReference "test"
         table.CreateIfNotExists() |> ignore
         let actual = tables.Client.ListTables() |> Seq.head

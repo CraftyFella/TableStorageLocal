@@ -1,7 +1,7 @@
 module FilterParserTests
 
 open Expecto
-open FakeAzureTables
+open TableStorageLocal
 open Domain
 open System
 

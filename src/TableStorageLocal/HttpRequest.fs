@@ -1,4 +1,4 @@
-namespace FakeAzureTables
+namespace TableStorageLocal
 
 [<RequireQualifiedAccess>]
 module HttpRequest =

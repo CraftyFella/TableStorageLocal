@@ -1,7 +1,7 @@
 [<AutoOpen>]
 module Helpers
 
-open FakeAzureTables
+open TableStorageLocal
 open Microsoft.Azure.Cosmos.Table
 open System
 open System.Collections.Generic
@@ -30,12 +30,12 @@ module Expect =
           e
     | _ -> failtestf "%s. Expected f to throw." message
 
-type FakeTables with
+type LocalTables with
   member __.Client =
     CloudStorageAccount.Parse(__.ConnectionString).CreateCloudTableClient()
 
-let createFakeTables () =
-  let tables = new FakeTables()
+let createLocalTables () =
+  let tables = new LocalTables()
 
   let table =
     tables.Client.GetTableReference("t" + Guid.NewGuid().ToString("N"))

@@ -2,7 +2,7 @@ module replace_entity
 
 open Expecto
 open System
-open FakeAzureTables
+open TableStorageLocal
 open Microsoft.Azure.Cosmos.Table
 
 
@@ -11,7 +11,7 @@ let replaceTests =
   testList
     "replace"
     [ test "row exists and correct etag used is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let actual =
           DynamicTableEntity("pk2", "r2k", null, stringFieldType "Inserted Value")
@@ -33,7 +33,7 @@ let replaceTests =
       }
 
       test "row exists and old etag used is rejected" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let oldEtag = "W/\"datetime'2020-10-16T10:37:44Z'\""
 
@@ -54,7 +54,7 @@ let replaceTests =
       }
 
       test "row exists and wildcard (*) etag used is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let wildcardEtag = "*"
 

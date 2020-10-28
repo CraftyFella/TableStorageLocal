@@ -8,7 +8,7 @@ let insertOrMergeTests =
   testList
     "insertOrMerge"
     [ test "row doesn't exist is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let actual =
           DynamicTableEntity("pk2", "r2k", "*", allFieldTypes ())
@@ -20,7 +20,7 @@ let insertOrMergeTests =
       }
 
       test "row exists is accepted" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 
@@ -46,7 +46,7 @@ let insertOrMergeTests =
       }
 
       test "merge single property" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 
@@ -70,7 +70,7 @@ let insertOrMergeTests =
       }
 
       test "add single property" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 
@@ -95,7 +95,7 @@ let insertOrMergeTests =
       }
 
       test "update single property" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
 
         let fields = allFieldTypes ()
 
@@ -119,7 +119,7 @@ let insertOrMergeTests =
       }
 
       test "inserted row is retrievable" {
-        let table = createFakeTables ()
+        let table = createLocalTables ()
         let fields = allFieldTypes ()
 
         let insertedResult =

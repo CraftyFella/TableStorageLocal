@@ -1,4 +1,4 @@
-namespace FakeAzureTables
+namespace TableStorageLocal
 
 open LiteDB
 open LiteDB.Engine
@@ -27,7 +27,7 @@ module private Host =
     let inner = commandHandler db |> httpHandler
     appBuilder.Run(fun ctx -> exceptionLoggingHttpHandler inner ctx)
 
-type FakeTables(connectionString: string, port: int) =
+type LocalTables(connectionString: string, port: int) =
 
   let db =
     new LiteDatabase(connectionString, Bson.FieldValue.mapper ())
@@ -37,7 +37,7 @@ type FakeTables(connectionString: string, port: int) =
   let mutable connectionString =
     sprintf
       "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://%s:%i/devstoreaccount1;"
-      (if Environment.GetEnvironmentVariable("FAKEAZURETABLES_USEPROXY")
+      (if Environment.GetEnvironmentVariable("TABLESTORAGELOCAL_USEPROXY")
           <> null then
         "localhost.charlesproxy.com"
        else
@@ -52,15 +52,15 @@ type FakeTables(connectionString: string, port: int) =
     // Case Sensitive
     db.Rebuild(RebuildOptions(Collation = Collation.Binary))
     |> ignore
-    if Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
+    if Environment.GetEnvironmentVariable("TABLESTORAGELOCAL_CONNECTIONSTRING")
        <> null then
-      connectionString <- Environment.GetEnvironmentVariable("FAKEAZURETABLES_CONNECTIONSTRING")
+      connectionString <- Environment.GetEnvironmentVariable("TABLESTORAGELOCAL_CONNECTIONSTRING")
     else
       webHost.Start()
 
-  new() = new FakeTables("filename=:memory:", findPort ())
-  new(connectionString: string) = new FakeTables(connectionString, findPort ())
-  new(port: int) = new FakeTables("filename=:memory:", port)
+  new() = new LocalTables("filename=:memory:", findPort ())
+  new(connectionString: string) = new LocalTables(connectionString, findPort ())
+  new(port: int) = new LocalTables("filename=:memory:", port)
 
   member __.ConnectionString = connectionString
 

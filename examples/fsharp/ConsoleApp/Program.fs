@@ -1,10 +1,10 @@
 open System
 open Microsoft.Azure.Cosmos.Table
-open FakeAzureTables
+open TableStorageLocal
 
 [<EntryPoint>]
 let main argv =
-  use tables = new FakeTables()
+  use tables = new LocalTables()
   let client = CloudStorageAccount.Parse(tables.ConnectionString).CreateCloudTableClient()
   let table = client.GetTableReference "test"
   table.CreateIfNotExists() |> ignore
