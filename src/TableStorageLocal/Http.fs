@@ -59,6 +59,7 @@ module Http =
       | StatusCode.Conflict -> "HTTP/1.1 409 Conflict"
       | StatusCode.PreconditionFailed -> "HTTP/1.1 412 Precondition Failed"
       | StatusCode.InternalServerError -> "HTTP/1.1 500 Internal Server Error"
+      | _ -> "HTTP/1.1 500 Internal Server Error"
 
   [<RequireQualifiedAccess>]
   type ContentType =

@@ -1,5 +1,7 @@
 namespace TableStorageLocal
 
+#nowarn "25"
+
 [<RequireQualifiedAccess>]
 module FilterParser =
 
