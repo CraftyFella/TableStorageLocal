@@ -5,7 +5,8 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\TableStorageLocal\TableStorageLocal.fsproj" />
+    <PackageReference Include="Microsoft.Azure.Cosmos.Table" Version="*" />
+    <PackageReference Include="TableStorageLocal" Version="*-*" />
   </ItemGroup>
-  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
+
 </Project>
