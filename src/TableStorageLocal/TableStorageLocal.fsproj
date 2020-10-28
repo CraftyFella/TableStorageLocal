@@ -7,7 +7,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AssemblyName>TableStorageLocal</AssemblyName>
     <PackageId>TableStorageLocal</PackageId>
-    <PackageTags>azure;tablestorage;tables</PackageTags>
+    <PackageTags>azure;tablestorage;tables;azurite;azure storage</PackageTags>
     <PackageProjectUrl>https://github.com/CraftyFella/TableStorageLocal</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageIcon>logo.png</PackageIcon>
