@@ -8,6 +8,7 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="TableStorageLocal" Version="*-*" />
+    <ProjectReference Include="..\..\..\src\TableStorageLocal\TableStorageLocal.fsproj" />
   </ItemGroup>
+  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

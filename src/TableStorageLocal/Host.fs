@@ -32,7 +32,7 @@ type LocalTables(connectionString: string, port: int) =
   let db =
     new LiteDatabase(connectionString, Bson.FieldValue.mapper ())
 
-  let url = sprintf "http://127.0.0.1:%i" port
+  let url = sprintf "http://*:%i" port
 
   let mutable connectionString =
     sprintf
@@ -63,6 +63,8 @@ type LocalTables(connectionString: string, port: int) =
   new(port: int) = new LocalTables("filename=:memory:", port)
 
   member __.ConnectionString = connectionString
+
+  member __.Run = webHost.Run
 
   interface IDisposable with
     member __.Dispose() =
