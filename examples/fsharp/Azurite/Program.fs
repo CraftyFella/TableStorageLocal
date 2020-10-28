@@ -1,5 +1,5 @@
 open System
 open TableStorageLocal
 
-let fakeTablesHost = new LocalTables("data.db", 10002)
+new LocalTables("./data.db", 10002) |> ignore
 Console.ReadLine() |> ignore
