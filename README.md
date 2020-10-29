@@ -34,7 +34,7 @@ var tables = new LocalTables("mydata.db", 10002)
 
 #### Docker image
 
-The Azurite example can be run as a docker image:
+The Azurite example can be run as a [docker image](https://hub.docker.com/r/craftyfella/tablestoragelocal):
 
 ```
 docker run -d -p 10002:10002  --name tablestoragelocal craftyfella/tablestoragelocal:latest
