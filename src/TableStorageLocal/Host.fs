@@ -18,6 +18,7 @@ module private Host =
     TcpListener(IPAddress.Loopback, 0)
     |> fun l ->
          l.Start()
+
          (l, (l.LocalEndpoint :?> IPEndPoint).Port)
          |> fun (l, p) ->
               l.Stop()
@@ -35,23 +36,33 @@ type LocalTables(connectionString: string, port: int) =
   let url = sprintf "http://*:%i" port
 
   let mutable connectionString =
-    sprintf
-      "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://%s:%i/devstoreaccount1;"
-      (if Environment.GetEnvironmentVariable("TABLESTORAGELOCAL_USEPROXY")
-          <> null then
+    let host =
+      if Environment.GetEnvironmentVariable "TABLESTORAGELOCAL_USEPROXY"
+         |> isNull then
+        "localhost"
+      else
         "localhost.charlesproxy.com"
-       else
-         "localhost")
-      port
+
+    let endpoint =
+      sprintf "http://%s:%i/devstoreaccount1" host port
+
+    sprintf
+      "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=%s;TableSecondaryEndpoint=%s"
+      endpoint
+      endpoint
 
   let webHost =
-    WebHostBuilder().Configure(fun appBuilder -> app db appBuilder).UseUrls(url)
-      .UseKestrel(fun options -> options.AllowSynchronousIO <- true).Build()
+    WebHostBuilder()
+      .Configure(fun appBuilder -> app db appBuilder)
+      .UseUrls(url)
+      .UseKestrel(fun options -> options.AllowSynchronousIO <- true)
+      .Build()
 
   do
     // Case Sensitive
     db.Rebuild(RebuildOptions(Collation = Collation.Binary))
     |> ignore
+
     if Environment.GetEnvironmentVariable("TABLESTORAGELOCAL_CONNECTIONSTRING")
        <> null then
       connectionString <- Environment.GetEnvironmentVariable("TABLESTORAGELOCAL_CONNECTIONSTRING")
