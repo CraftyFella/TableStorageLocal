@@ -3,7 +3,6 @@ module merge_entity
 open Expecto
 open Microsoft.Azure.Cosmos.Table
 
-
 [<Tests>]
 let mergeTests =
   testList

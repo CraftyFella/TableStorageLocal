@@ -2,7 +2,6 @@ module insert_entity_concurrently
 
 open Expecto
 open System
-open TableStorageLocal
 open Microsoft.Azure.Cosmos.Table
 open System.Threading.Tasks
 

@@ -1,10 +1,7 @@
 module replace_entity
 
 open Expecto
-open System
-open TableStorageLocal
 open Microsoft.Azure.Cosmos.Table
-
 
 [<Tests>]
 let replaceTests =

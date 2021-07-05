@@ -1,8 +1,6 @@
 module delete_entity
 
 open Expecto
-open System
-open TableStorageLocal
 open Microsoft.Azure.Cosmos.Table
 
 
