@@ -1,8 +1,6 @@
 module get_entity
 
 open Expecto
-open System
-open TableStorageLocal
 open Microsoft.Azure.Cosmos.Table
 
 [<Tests>]
@@ -14,10 +12,10 @@ let get_entity =
 
         let fields = allFieldTypes ()
 
-        let insertResult =
-          DynamicTableEntity("pk2", "r2k", "*", fields)
+        DynamicTableEntity("pk2", "r2k", "*", fields)
           |> TableOperation.Insert
           |> table.Execute
+          |> ignore
 
         let actual =
           TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")
@@ -34,8 +32,8 @@ let get_entity =
 
         for field in fields do
           Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
-
       }
+
       test "entity doesnt exist" {
         let table = createLocalTables ()
 
@@ -44,5 +42,4 @@ let get_entity =
           |> table.Execute
 
         Expect.equal (actual.HttpStatusCode) 404 "unexpected result"
-
       } ]

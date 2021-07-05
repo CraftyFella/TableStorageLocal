@@ -1,3 +1,4 @@
 Expecto
 FSharp.Core
 Microsoft.Azure.Cosmos.Table
+Azure.Data.Tables
