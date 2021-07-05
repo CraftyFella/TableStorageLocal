@@ -45,6 +45,7 @@ let searchTests =
 
         for result in results do
           Expect.isNotNull result.ETag "eTag is expected"
+
           for field in allFieldTypes () do
             Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
 
@@ -365,7 +366,9 @@ let searchTests =
           TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
 
         let query =
-          TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
+          TableQuery<DynamicTableEntity>()
+            .Where(filter)
+            .Take(Nullable 1)
 
         let token = TableContinuationToken()
 
@@ -382,6 +385,7 @@ let searchTests =
 
         for result in results do
           Expect.isNotNull result.ETag "eTag is expected"
+
           for field in allFieldTypes () do
             Expect.equal (result.Properties.[field.Key]) (field.Value) "unexpected values"
 
@@ -404,7 +408,8 @@ let searchTests =
         |> List.iter insert
 
         let query =
-          TableQuery<DynamicTableEntity>().Take(Nullable 100)
+          TableQuery<DynamicTableEntity>()
+            .Take(Nullable 100)
 
         let token = TableContinuationToken()
 
@@ -437,7 +442,10 @@ let searchTests =
           TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
 
         let query =
-          TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1).Select([ "StringField" ] |> ResizeArray)
+          TableQuery<DynamicTableEntity>()
+            .Where(filter)
+            .Take(Nullable 1)
+            .Select([ "StringField" ] |> ResizeArray)
 
         let token = TableContinuationToken()
 
@@ -479,7 +487,10 @@ let searchTests =
           TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
 
         let query =
-          TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1).Select(ResizeArray())
+          TableQuery<DynamicTableEntity>()
+            .Where(filter)
+            .Take(Nullable 1)
+            .Select(ResizeArray())
 
         let token = TableContinuationToken()
 
@@ -520,7 +531,9 @@ let searchTests =
           TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
 
         let query =
-          TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
+          TableQuery<DynamicTableEntity>()
+            .Where(filter)
+            .Take(Nullable 1)
 
         let results = executeQuery table query
 
@@ -553,7 +566,9 @@ let searchTests =
           TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, "pk1")
 
         let query =
-          TableQuery<DynamicTableEntity>().Where(filter).Take(Nullable 1)
+          TableQuery<DynamicTableEntity>()
+            .Where(filter)
+            .Take(Nullable 1)
 
         let results = executeQuery table query
 

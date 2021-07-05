@@ -26,6 +26,7 @@ module QueryApplier =
       | Filter.Combined (left, tableOperator, right) ->
           let leftExpression = filterExpressionBuilder left
           let rightExpression = filterExpressionBuilder right
+
           match tableOperator with
           | TableOperators.And -> Query.And(leftExpression, rightExpression)
           | TableOperators.Or -> Query.Or(leftExpression, rightExpression)
@@ -46,7 +47,10 @@ module QueryApplier =
       |> Seq.toArray
 
     let next =
-      if rows.Length = limit + 1 then rows |> Array.tryLast else None
+      if rows.Length = limit + 1 then
+        rows |> Array.tryLast
+      else
+        None
 
     let continuation =
       match next with

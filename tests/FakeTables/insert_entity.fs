@@ -34,8 +34,10 @@ let insertTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
-          e.RequestInformation.HttpStatusCode = 409) run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException>
+          (fun e -> e.RequestInformation.HttpStatusCode = 409)
+          run
+          "expected exception"
       }
 
       test "row exists (Different case) is accepted" {

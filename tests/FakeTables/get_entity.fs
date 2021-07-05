@@ -13,9 +13,9 @@ let get_entity =
         let fields = allFieldTypes ()
 
         DynamicTableEntity("pk2", "r2k", "*", fields)
-          |> TableOperation.Insert
-          |> table.Execute
-          |> ignore
+        |> TableOperation.Insert
+        |> table.Execute
+        |> ignore
 
         let actual =
           TableOperation.Retrieve<DynamicTableEntity>("pk2", "r2k")

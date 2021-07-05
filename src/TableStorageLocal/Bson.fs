@@ -13,11 +13,13 @@ module Bson =
   [<RequireQualifiedAccess>]
   module Continuation =
     let toBsonExpression (continuation: Continuation) =
-      Query.GTE
-        ("_id",
-         BsonValue
-           (continuation.NextPartitionKey
-            + continuation.NextRowKey))
+      Query.GTE(
+        "_id",
+        BsonValue(
+          continuation.NextPartitionKey
+          + continuation.NextRowKey
+        )
+      )
 
   [<RequireQualifiedAccess>]
   module FieldValue =
@@ -35,17 +37,29 @@ module Bson =
       | FieldValue.Binary v -> BsonValue v
 
     let fromBsonValue (bsonValue: BsonValue) =
-      if bsonValue.IsBoolean then FieldValue.Bool bsonValue.AsBoolean
-      elif bsonValue.IsDateTime then FieldValue.Date(DateTimeOffset(bsonValue.AsDateTime.ToUniversalTime()))
-      elif bsonValue.IsDouble then FieldValue.Double bsonValue.AsDouble
-      elif bsonValue.IsGuid then FieldValue.Guid bsonValue.AsGuid
-      elif bsonValue.IsInt32 then FieldValue.Int bsonValue.AsInt32
-      elif bsonValue.IsInt64 then FieldValue.Long bsonValue.AsInt64
-      elif bsonValue.IsBinary then FieldValue.Binary bsonValue.AsBinary
-      else FieldValue.String bsonValue.AsString
+      if bsonValue.IsBoolean then
+        FieldValue.Bool bsonValue.AsBoolean
+      elif bsonValue.IsDateTime then
+        FieldValue.Date(DateTimeOffset(bsonValue.AsDateTime.ToUniversalTime()))
+      elif bsonValue.IsDouble then
+        FieldValue.Double bsonValue.AsDouble
+      elif bsonValue.IsGuid then
+        FieldValue.Guid bsonValue.AsGuid
+      elif bsonValue.IsInt32 then
+        FieldValue.Int bsonValue.AsInt32
+      elif bsonValue.IsInt64 then
+        FieldValue.Long bsonValue.AsInt64
+      elif bsonValue.IsBinary then
+        FieldValue.Binary bsonValue.AsBinary
+      else
+        FieldValue.String bsonValue.AsString
 
     let mapper () =
       let mapper = new BsonMapper()
-      mapper.RegisterType<FieldValue>
-        ((fun fieldValue -> toBsonValue fieldValue), (fun bsonValue -> fromBsonValue bsonValue))
+
+      mapper.RegisterType<FieldValue>(
+        (fun fieldValue -> toBsonValue fieldValue),
+        (fun bsonValue -> fromBsonValue bsonValue)
+      )
+
       mapper

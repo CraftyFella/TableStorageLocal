@@ -95,16 +95,23 @@ module Http =
       sb.Append rawStatusCode |> ignore
       sb.AppendLine() |> ignore
       sb.Append headers |> ignore
+
       response.ContentType
-      |> Option.iter (fun cont ->
-           sb.Append
-             (sb.AppendLine() |> ignore
-              sprintf "Content-Type: %s" (cont |> ContentType.toRaw))
-           |> ignore)
+      |> Option.iter
+           (fun cont ->
+             sb.Append(
+               sb.AppendLine() |> ignore
+               sprintf "Content-Type: %s" (cont |> ContentType.toRaw)
+             )
+             |> ignore)
+
       sb.AppendLine() |> ignore
+
       response.Body
-      |> Option.iter (fun body ->
-           sb.AppendLine() |> ignore
-           sb.Append body |> ignore)
+      |> Option.iter
+           (fun body ->
+             sb.AppendLine() |> ignore
+             sb.Append body |> ignore)
+
       let raw = sb.ToString()
       raw

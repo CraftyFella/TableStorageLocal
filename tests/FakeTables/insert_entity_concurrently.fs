@@ -13,10 +13,12 @@ let insertTests =
         let table = createLocalTables ()
 
         let tasks =
-          Array.init 10 (fun _ ->
-            DynamicTableEntity("pk", Guid.NewGuid().ToString(), "*", allFieldTypes ())
-            |> TableOperation.Insert
-            |> table.ExecuteAsync)
+          Array.init
+            10
+            (fun _ ->
+              DynamicTableEntity("pk", Guid.NewGuid().ToString(), "*", allFieldTypes ())
+              |> TableOperation.Insert
+              |> table.ExecuteAsync)
 
         let actual =
           Task.WhenAll(tasks).Result

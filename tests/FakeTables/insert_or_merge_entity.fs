@@ -81,6 +81,7 @@ let insertOrMergeTests =
 
         let actual =
           fields.Add("NewStringField", EntityProperty.GeneratePropertyForString "new")
+
           DynamicTableEntity("pk2", "r2k", "*", fields)
           |> TableOperation.InsertOrMerge
           |> table.Execute

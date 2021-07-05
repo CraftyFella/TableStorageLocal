@@ -91,8 +91,10 @@ let insertOrReplaceTests =
           |> (fun x -> table.Execute(x, null, oc))
           |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
-          e.Message = "Precondition Failed") run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException>
+          (fun e -> e.Message = "Precondition Failed")
+          run
+          "expected exception"
       }
 
       test "inserted row is retrievable" {

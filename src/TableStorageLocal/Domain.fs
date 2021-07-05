@@ -84,9 +84,10 @@ module Domain =
     let serialize (input: DateTimeOffset) =
       sprintf "W/\"datetime'%s'\"" (input.ToString("s") + input.ToString(".fffZ"))
 
-    let create () = System.DateTimeOffset.UtcNow |> Specific
+    let create () =
+      System.DateTimeOffset.UtcNow |> Specific
 
-    let parse (input: string): ETag =
+    let parse (input: string) : ETag =
       match input with
       | "*" -> All
       | Regex "datetime'(.+)'" [ etag ] ->
@@ -184,34 +185,36 @@ module Domain =
       let fields =
         tableFields
         |> Seq.toList
-        |> List.map (fun entry ->
-             let name = entry.Key
-             let value = entry.Value
-             match value with
-             | FieldValue.String value -> [ JProperty(name, value) ]
-             | FieldValue.Long value ->
-                 [ JProperty(sprintf "%s@odata.type" name, "Edm.Int64")
-                   JProperty(name, string value) ]
-             | FieldValue.Int value -> [ JProperty(name, value) ]
-             | FieldValue.Guid value ->
-                 [ JProperty(sprintf "%s@odata.type" name, "Edm.Guid")
-                   JProperty(name, value) ]
-             | FieldValue.Double value -> [ JProperty(name, value) ]
-             | FieldValue.Date value when name = "Timestamp" ->
-                 [ JProperty("odata.etag", value |> ETag.serialize)
-                   JProperty(name, value) ]
-             | FieldValue.Date value ->
-                 [ JProperty(sprintf "%s@odata.type" name, "Edm.DateTime")
-                   JProperty(name, value) ]
-             | FieldValue.Bool value -> [ JProperty(name, value) ]
-             | FieldValue.Binary value ->
-                 [ JProperty(sprintf "%s@odata.type" name, "Edm.Binary")
-                   JProperty(name, value) ])
+        |> List.map
+             (fun entry ->
+               let name = entry.Key
+               let value = entry.Value
+
+               match value with
+               | FieldValue.String value -> [ JProperty(name, value) ]
+               | FieldValue.Long value ->
+                   [ JProperty(sprintf "%s@odata.type" name, "Edm.Int64")
+                     JProperty(name, string value) ]
+               | FieldValue.Int value -> [ JProperty(name, value) ]
+               | FieldValue.Guid value ->
+                   [ JProperty(sprintf "%s@odata.type" name, "Edm.Guid")
+                     JProperty(name, value) ]
+               | FieldValue.Double value -> [ JProperty(name, value) ]
+               | FieldValue.Date value when name = "Timestamp" ->
+                   [ JProperty("odata.etag", value |> ETag.serialize)
+                     JProperty(name, value) ]
+               | FieldValue.Date value ->
+                   [ JProperty(sprintf "%s@odata.type" name, "Edm.DateTime")
+                     JProperty(name, value) ]
+               | FieldValue.Bool value -> [ JProperty(name, value) ]
+               | FieldValue.Binary value ->
+                   [ JProperty(sprintf "%s@odata.type" name, "Edm.Binary")
+                     JProperty(name, value) ])
         |> List.collect id
 
       fields
 
-    let fromJObject (jObject: JObject): TableFields =
+    let fromJObject (jObject: JObject) : TableFields =
       let oDataFields =
         jObject.Properties()
         |> Seq.filter (fun p -> p.Name.EndsWith "@odata.type")
@@ -227,28 +230,29 @@ module Domain =
       |> Seq.filter (fun p -> p.Name <> "PartitionKey")
       |> Seq.filter (fun p -> p.Name <> "RowKey")
       |> Seq.filter (fun p -> p.Name.Contains "odata.type" |> not)
-      |> Seq.map (fun p ->
-           (p.Name,
-            match p.Name |> oDataType with
-            | "Edm.DateTime" ->
-                p.Value.Value<DateTime>()
-                |> DateTimeOffset
-                |> FieldValue.Date
-            | "Edm.Int64" -> p.Value.Value<int64>() |> FieldValue.Long
-            | "Edm.Guid" ->
-                p.Value.Value<string>()
-                |> Guid.Parse
-                |> FieldValue.Guid
-            | "Edm.Binary" ->
-                p.Value.Value<string>()
-                |> Convert.FromBase64String
-                |> FieldValue.Binary
-            | _ ->
-                match p.Value.Type with
-                | JTokenType.Integer -> p.Value.Value<int>() |> FieldValue.Int
-                | JTokenType.Float -> p.Value.Value<float>() |> FieldValue.Double
-                | JTokenType.Boolean -> p.Value.Value<bool>() |> FieldValue.Bool
-                | _ -> p.Value.Value<string>() |> FieldValue.String))
+      |> Seq.map
+           (fun p ->
+             (p.Name,
+              match p.Name |> oDataType with
+              | "Edm.DateTime" ->
+                  p.Value.Value<DateTime>()
+                  |> DateTimeOffset
+                  |> FieldValue.Date
+              | "Edm.Int64" -> p.Value.Value<int64>() |> FieldValue.Long
+              | "Edm.Guid" ->
+                  p.Value.Value<string>()
+                  |> Guid.Parse
+                  |> FieldValue.Guid
+              | "Edm.Binary" ->
+                  p.Value.Value<string>()
+                  |> Convert.FromBase64String
+                  |> FieldValue.Binary
+              | _ ->
+                  match p.Value.Type with
+                  | JTokenType.Integer -> p.Value.Value<int>() |> FieldValue.Int
+                  | JTokenType.Float -> p.Value.Value<float>() |> FieldValue.Double
+                  | JTokenType.Boolean -> p.Value.Value<bool>() |> FieldValue.Bool
+                  | _ -> p.Value.Value<string>() |> FieldValue.String))
       |> dict
       |> Dictionary
 
@@ -256,7 +260,10 @@ module Domain =
   module TableRow =
     open Newtonsoft.Json.Linq
 
-    let toJObject ({ Keys = tablekeys; Fields = tableFields }) =
+    let toJObject
+      ({ Keys = tablekeys
+         Fields = tableFields })
+      =
       let requiredFields =
         [ JProperty("PartitionKey", tablekeys.PartitionKey)
           JProperty("RowKey", tablekeys.RowKey) ]
@@ -270,28 +277,32 @@ module Domain =
         match row.Fields.ContainsKey key with
         | false -> row.Fields.Add(key, value)
         | _ -> ()
+
       row
 
     let withETag (etag: ETag) (row: TableRow) =
       match etag with
       | Specific etag ->
           row.Fields.Remove("Timestamp") |> ignore
+
           row.Fields.TryAdd("Timestamp", FieldValue.Date etag)
           |> ignore
+
           row
       | _ -> row
 
     let (|ExistsWithMatchingETag|_|) (existingETag: ETag) (existingRow: TableRow option) =
       match existingRow, existingETag with
-      | Some existingRow, ETag.Specific existingETag when (existingRow.ETag |> ETag.serialize) =
-                                                            (existingETag |> ETag.serialize) -> Some existingRow
+      | Some existingRow, ETag.Specific existingETag when
+        (existingRow.ETag |> ETag.serialize) = (existingETag |> ETag.serialize) -> Some existingRow
       | Some existingRow, ETag.All -> Some existingRow
       | _ -> None
 
     let (|ExistsWithDifferentETag|_|) (existingETag: ETag) (existingRow: TableRow option) =
       match existingRow, existingETag with
-      | Some existingRow, ETag.Specific existingETag when (existingRow.ETag |> ETag.serialize)
-                                                          <> (existingETag |> ETag.serialize) -> Some existingRow
+      | Some existingRow, ETag.Specific existingETag when
+        (existingRow.ETag |> ETag.serialize)
+        <> (existingETag |> ETag.serialize) -> Some existingRow
       | _ -> None
 
   [<RequireQualifiedAccess>]
@@ -315,7 +326,10 @@ module Domain =
       | _ -> failwithf "shouldn't get here"
 
     let ofString value =
-      if String.IsNullOrWhiteSpace value then None else Some value
+      if String.IsNullOrWhiteSpace value then
+        None
+      else
+        Some value
 
   [<RequireQualifiedAccess>]
   module WriteCommand =

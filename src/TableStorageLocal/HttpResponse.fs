@@ -14,17 +14,25 @@ module HttpResponse =
   open FSharp.Control.Tasks
 
   let private batchHeader batchId changesetId =
-    sprintf """--batchresponse_%s
-Content-Type: multipart/mixed; boundary=changesetresponse_%s""" batchId changesetId
+    sprintf
+      """--batchresponse_%s
+Content-Type: multipart/mixed; boundary=changesetresponse_%s"""
+      batchId
+      changesetId
 
   let private batchFooter batchId changesetId =
-    sprintf """--changesetresponse_%s--
---batchresponse_%s--""" changesetId batchId
+    sprintf
+      """--changesetresponse_%s--
+--batchresponse_%s--"""
+      changesetId
+      batchId
 
   let private changesetSeperator changesetId =
-    sprintf """--changesetresponse_%s
+    sprintf
+      """--changesetresponse_%s
 Content-Type: application/http
-Content-Transfer-Encoding: binary""" changesetId
+Content-Transfer-Encoding: binary"""
+      changesetId
 
   module OData =
     type ODataMessage = { lang: string; value: string }
@@ -40,13 +48,16 @@ Content-Transfer-Encoding: binary""" changesetId
       let message =
         match reason with
         | "EntityAlreadyExists" ->
-            sprintf "The specified entity already exists.\nRequestId:d1ae7ad3-5002-004a-7261-ac9822000000\nTime:%s"
+            sprintf
+              "The specified entity already exists.\nRequestId:d1ae7ad3-5002-004a-7261-ac9822000000\nTime:%s"
               timestamp
         | "ResourceNotFound" ->
-            sprintf "The specified resource does not exist.\nRequestId:d1ae7ad3-5002-004a-7261-ac9822000000\nTime:%s"
+            sprintf
+              "The specified resource does not exist.\nRequestId:d1ae7ad3-5002-004a-7261-ac9822000000\nTime:%s"
               timestamp
         | "InvalidDuplicateRow" ->
-            sprintf "The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.\nRequestId:d1ae7ad3-5002-004a-7261-ac9822000000\nTime:%s"
+            sprintf
+              "The batch request contains multiple changes with same row key. An entity can appear only once in a batch request.\nRequestId:d1ae7ad3-5002-004a-7261-ac9822000000\nTime:%s"
               timestamp
         | _ -> sprintf "%s.\nRequestId:d1ae7ad3-5002-004a-7261-ac9822000000\nTime:%s" reason timestamp
 
@@ -56,7 +67,7 @@ Content-Transfer-Encoding: binary""" changesetId
 
     let toRaw (odata: OData) = JsonConvert.SerializeObject odata
 
-  let private fromWriteCommandResponse (response: WriteCommandResponse): Http.Response =
+  let private fromWriteCommandResponse (response: WriteCommandResponse) : Http.Response =
     match response with
     | WriteCommandResponse.Ack (keys, etag) ->
         let headers =
@@ -126,7 +137,7 @@ Content-Transfer-Encoding: binary""" changesetId
             |> OData.toRaw
             |> Some }
 
-  let private fromBatchCommandResponse (response: BatchCommandResponse): Http.Response =
+  let private fromBatchCommandResponse (response: BatchCommandResponse) : Http.Response =
 
     let batchId = Guid.NewGuid().ToString()
     let changesetId = Guid.NewGuid().ToString()
@@ -169,11 +180,12 @@ Content-Transfer-Encoding: binary""" changesetId
         |> dict
       Body = Some body }
 
-  let private fromReadCommandResponse (response: ReadCommandResponse): Http.Response =
+  let private fromReadCommandResponse (response: ReadCommandResponse) : Http.Response =
     match response with
     | GetResponse response ->
         let jObject = response |> TableRow.toJObject
         let json = jObject.ToString()
+
         { StatusCode = StatusCode.Ok
           ContentType = Some ContentType.ApplicationJson
           Headers =
@@ -186,6 +198,7 @@ Content-Transfer-Encoding: binary""" changesetId
 
         let response = JObject([ JProperty("value", rows) ])
         let json = (response.ToString())
+
         { StatusCode = StatusCode.Ok
           ContentType = Some ContentType.ApplicationJson
           Headers =
@@ -202,7 +215,7 @@ Content-Transfer-Encoding: binary""" changesetId
           Headers = new Dictionary<_, _>()
           Body = None }
 
-  let private fromTableCommandResponse (response: TableCommandResponse): Http.Response =
+  let private fromTableCommandResponse (response: TableCommandResponse) : Http.Response =
     match response with
     | TableCommandResponse.Ack ->
         { StatusCode = StatusCode.NoContent
@@ -244,10 +257,13 @@ Content-Transfer-Encoding: binary""" changesetId
   let applyToCtx (ctx: HttpContext) (response: Response) =
     task {
       ctx.Response.StatusCode <- int response.StatusCode
+
       response.Headers
       |> Seq.iter (fun kvp -> ctx.Response.Headers.Add(kvp.Key, StringValues(kvp.Value)))
-      if response.ContentType.IsSome
-      then ctx.Response.ContentType <- ContentType.toRaw response.ContentType.Value
-      if response.Body.IsSome
-      then do! ctx.Response.WriteAsync response.Body.Value
+
+      if response.ContentType.IsSome then
+        ctx.Response.ContentType <- ContentType.toRaw response.ContentType.Value
+
+      if response.Body.IsSome then
+        do! ctx.Response.WriteAsync response.Body.Value
     }

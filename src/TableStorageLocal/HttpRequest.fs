@@ -25,9 +25,8 @@ module HttpRequest =
 
   let private toReason (ex: Exception) =
     match ex with
-    | :? Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException as ex when ex.Message.StartsWith
-                                                                                       ("Unrecognized HTTP version") ->
-        InvalidRoute ex.Message
+    | :? Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException as ex when
+      ex.Message.StartsWith("Unrecognized HTTP version") -> InvalidRoute ex.Message
     | :? Microsoft.AspNetCore.Server.Kestrel.Core.BadHttpRequestException as ex -> InvalidRequestHeader ex.Message
     | :? System.ArgumentException as ex when ex.Message = "Requested value 'Custom' was not found." -> InvalidMethod
     | _ -> Invalid ex
@@ -39,16 +38,20 @@ module HttpRequest =
     let mutable _uri = ""
     let _query = new Dictionary<string, string array>()
 
-    let toString (input: Span<byte>) = Encoding.UTF8.GetString(input.ToArray())
+    let toString (input: Span<byte>) =
+      Encoding.UTF8.GetString(input.ToArray())
 
     interface IHttpRequestLineHandler with
-      member this.OnStartLine(method: HttpMethod,
-                              version: HttpVersion,
-                              target: Span<byte>,
-                              path: Span<byte>,
-                              query: Span<byte>,
-                              customMethod: Span<byte>,
-                              pathEncoded: bool) =
+      member this.OnStartLine
+        (
+          method: HttpMethod,
+          version: HttpVersion,
+          target: Span<byte>,
+          path: Span<byte>,
+          query: Span<byte>,
+          customMethod: Span<byte>,
+          pathEncoded: bool
+        ) =
         _method <- (string method) |> toMethod
         _path <- toString (path)
         _uri <- toString (target)
@@ -58,6 +61,7 @@ module HttpRequest =
 
         for query in QueryString do
           _query.Add(query.Key, query.Value.ToArray())
+
         ()
 
 
@@ -74,17 +78,24 @@ module HttpRequest =
 
 
   let removeDoubleLineBreaks (source: string) =
-    if ("\r\n\r\n".Equals(source.Substring(source.Length - 4, 4)))
-    then sprintf "%s%s" (source.Substring(0, source.Length - 4)) "\r\n"
-    else source
+    if ("\r\n\r\n"
+          .Equals(source.Substring(source.Length - 4, 4))) then
+      sprintf "%s%s" (source.Substring(0, source.Length - 4)) "\r\n"
+    else
+      source
 
   let mergeToPost (source: string) =
-    if ("MERGE".Equals(source.Substring(0, 5)))
-    then sprintf "%s%s" "POST" (source.Substring(5))
-    else source
+    if ("MERGE".Equals(source.Substring(0, 5))) then
+      sprintf "%s%s" "POST" (source.Substring(5))
+    else
+      source
 
   let private normalise (input: string) =
-    input.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n").TrimStart()
+    input
+      .Replace("\r\n", "\n")
+      .Replace("\r", "\n")
+      .Replace("\n", "\r\n")
+      .TrimStart()
     |> removeDoubleLineBreaks
     |> mergeToPost
 
@@ -99,12 +110,16 @@ module HttpRequest =
       let app = new ParserCallbacks()
       let mutable consumed = Unchecked.defaultof<_>
       let mutable examined = Unchecked.defaultof<_>
+
       parser.ParseRequestLine(app, &buffer, &consumed, &examined)
       |> ignore
+
       buffer <- buffer.Slice(consumed)
       let mutable consumedBytes = Unchecked.defaultof<_>
+
       parser.ParseHeaders(app, &buffer, &consumed, &examined, &consumedBytes)
       |> ignore
+
       buffer <- buffer.Slice(consumed)
 
       let body =
@@ -112,10 +127,13 @@ module HttpRequest =
 
       let uri = Uri(app.Uri, UriKind.RelativeOrAbsolute)
 
-      let request: Request =
+      let request : Request =
         { Method = app.Method
           Path =
-            if uri.IsAbsoluteUri then uri.AbsolutePath else uri.OriginalString
+            (if uri.IsAbsoluteUri then
+               uri.AbsolutePath
+             else
+               uri.OriginalString)
             |> Net.WebUtility.UrlDecode
           Body = body
           Headers = app.Headers
@@ -125,17 +143,22 @@ module HttpRequest =
       Result.Ok request
     with ex -> toReason ex |> Error
 
-  let tryExtractBatches (request: Request): Request list option =
+  let tryExtractBatches (request: Request) : Request list option =
     match (request.Headers.Item "content-type")
           |> Array.head with
     | Regex "boundary=(.+)$" [ boundary ] ->
         let rawRequests =
           Regex.Split(request.Body, "--changeset_.+$", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
           |> Array.filter (fun x -> not (x.Contains boundary))
-          |> Array.map (fun x ->
-               Regex.Split(x, "^content-transfer-encoding: binary", RegexOptions.Multiline ||| RegexOptions.IgnoreCase)
-               |> Array.skip 1
-               |> Array.head)
+          |> Array.map
+               (fun x ->
+                 Regex.Split(
+                   x,
+                   "^content-transfer-encoding: binary",
+                   RegexOptions.Multiline ||| RegexOptions.IgnoreCase
+                 )
+                 |> Array.skip 1
+                 |> Array.head)
 
         let httpRequests =
           rawRequests |> Array.map (parse) |> List.ofArray
@@ -145,8 +168,8 @@ module HttpRequest =
         | false -> None
     | _ -> None
 
-  let toRequest (request: HttpRequest): Request =
-    let request: Request =
+  let toRequest (request: HttpRequest) : Request =
+    let request : Request =
       { Method = request.Method |> toMethod
         Path = request.Path.Value |> Net.WebUtility.UrlDecode
         Body = request.BodyString

@@ -45,8 +45,10 @@ let replaceTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
-          e.Message = "Precondition Failed") run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException>
+          (fun e -> e.Message = "Precondition Failed")
+          run
+          "expected exception"
 
       }
 

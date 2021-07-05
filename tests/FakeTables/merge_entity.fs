@@ -50,8 +50,10 @@ let mergeTests =
           |> table.Execute
           |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
-          e.RequestInformation.HttpStatusCode = 412) run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException>
+          (fun e -> e.RequestInformation.HttpStatusCode = 412)
+          run
+          "expected exception"
 
       }
 
@@ -110,6 +112,7 @@ let mergeTests =
 
         let actual =
           fields.Add("NewStringField", EntityProperty.GeneratePropertyForString "new")
+
           DynamicTableEntity("pk2", "r2k", actual.Etag, fields)
           |> TableOperation.Merge
           |> table.Execute

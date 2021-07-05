@@ -30,6 +30,7 @@ let batchMergeTests =
         let actual = batch |> table.ExecuteBatch
 
         Expect.equal (actual |> Seq.length) 1 "unexpected result"
+
         for batchItem in actual do
           Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
       } ]
@@ -54,6 +55,7 @@ let batchDeleteTests =
         let batchResult = batch |> table.ExecuteBatch
 
         Expect.equal (batchResult |> Seq.length) 1 "unexpected result"
+
         for batchItem in batchResult do
           Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
       } ]
@@ -77,6 +79,7 @@ let batchInsertTests =
         let actual = batch |> table.ExecuteBatch
 
         Expect.equal (actual |> Seq.length) 2 "unexpected result"
+
         for batchItem in actual do
           Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
 
@@ -93,16 +96,20 @@ let batchInsertTests =
         let actual = batch |> table.ExecuteBatch
 
         Expect.equal (actual |> Seq.length) 1 "unexpected result"
+
         for batchItem in actual do
           Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
 
         let batch = TableBatchOperation()
+
         createEntityWithString "pk" "2" "rowValue"
         |> TableOperation.Insert
         |> batch.Add
+
         let actual = batch |> table.ExecuteBatch
 
         Expect.equal (actual |> Seq.length) 1 "unexpected result"
+
         for batchItem in actual do
           Expect.equal (batchItem.HttpStatusCode) 204 "unexpected result"
 
@@ -123,14 +130,17 @@ let batchInsertTests =
 
         let run () = batch |> table.ExecuteBatch |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
-          e.RequestInformation.HttpStatusCode = 400) run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException>
+          (fun e -> e.RequestInformation.HttpStatusCode = 400)
+          run
+          "expected exception"
 
       }
 
       test "batch tries to insert a row which already exists" {
 
         let table = createLocalTables ()
+
         DynamicTableEntity("pk", "2", "*", allFieldTypes ())
         |> TableOperation.Insert
         |> table.Execute
@@ -148,8 +158,10 @@ let batchInsertTests =
 
         let run () = batch |> table.ExecuteBatch |> ignore
 
-        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException> (fun e ->
-          e.RequestInformation.HttpStatusCode = 409) run "expected exception"
+        Expect.throwsTWithPredicate<Microsoft.Azure.Cosmos.Table.StorageException>
+          (fun e -> e.RequestInformation.HttpStatusCode = 409)
+          run
+          "expected exception"
 
         let actual =
           TableOperation.Retrieve<DynamicTableEntity>("pk", "1")
@@ -170,6 +182,7 @@ let batchInsertTests =
         batch |> table.ExecuteBatch |> ignore
 
         let batch = TableBatchOperation()
+
         createEntityWithString "pk" "2" "rowValue"
         |> TableOperation.Insert
         |> batch.Add

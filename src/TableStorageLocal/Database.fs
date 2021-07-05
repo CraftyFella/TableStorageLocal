@@ -14,9 +14,11 @@ module Database =
     let random = Random()
 
     let generate length =
-      Array.init length (fun _ ->
-        (random.Next(0, chars.Length - 1), chars)
-        ||> Seq.item)
+      Array.init
+        length
+        (fun _ ->
+          (random.Next(0, chars.Length - 1), chars)
+          ||> Seq.item)
       |> String
 
     generate

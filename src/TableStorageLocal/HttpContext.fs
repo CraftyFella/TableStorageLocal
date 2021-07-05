@@ -44,6 +44,7 @@ module HttpContext =
       | Method.Post, "/devstoreaccount1/Tables"
       | Method.Post, "/devstoreaccount1/Tables()" ->
           let jObject = JObject.Parse request.Body
+
           match jObject.TryGetValue "TableName" with
           | true, tableName -> Some(string tableName)
           | _ -> None
@@ -59,6 +60,7 @@ module HttpContext =
       | Method.Post, Regex "^\/devstoreaccount1\/(\w+)\(\)$" [ tableName ]
       | Method.Post, Regex "^\/devstoreaccount1\/(\w+)$" [ tableName ] ->
           let jObject = JObject.Parse request.Body
+
           match jObject.TryGetValue "PartitionKey" with
           | true, p ->
               match jObject.TryGetValue "RowKey" with
@@ -67,17 +69,21 @@ module HttpContext =
           | _ -> None
       | _ -> None
 
-    let private (|ReplaceRequest|MergeRequest|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|) (request: Request) =
+    let private (|ReplaceRequest|MergeRequest|InsertOrMergeRequest|InsertOrReplaceRequest|DeleteRequest|GetRequest|NotFoundRequest|)
+      (request: Request)
+      =
       match request.Path with
       | Regex "^\/devstoreaccount1\/(\w+)\(PartitionKey='(.+)',RowKey='(.+)'\)$" [ tableName; partitionKey; rowKey ] ->
           match request.Method with
           | Method.Post ->
               let jObject = JObject.Parse request.Body
+
               match request.Headers.TryGetValue("if-match") with
               | true, [| etag |] -> MergeRequest(tableName, partitionKey, rowKey, etag |> ETag.parse, jObject)
               | _ -> InsertOrMergeRequest(tableName, partitionKey, rowKey, jObject)
           | Method.Put ->
               let jObject = JObject.Parse request.Body
+
               match request.Headers.TryGetValue("if-match") with
               | true, [| etag |] -> ReplaceRequest(tableName, partitionKey, rowKey, etag |> ETag.parse, jObject)
               | _ -> InsertOrReplaceRequest(tableName, partitionKey, rowKey, jObject)
@@ -99,65 +105,72 @@ module HttpContext =
       | ListTablesRequest -> Table ListTables |> Some
       | CreateTableRequest name -> CreateTable name |> Table |> Some
       | InsertOrMergeRequest (table, partitionKey, rowKey, fields) ->
-          InsertOrMerge
-            (table,
-             { Keys =
-                 { PartitionKey = partitionKey
-                   RowKey = rowKey }
-               Fields = (fields |> TableFields.fromJObject) })
+          InsertOrMerge(
+            table,
+            { Keys =
+                { PartitionKey = partitionKey
+                  RowKey = rowKey }
+              Fields = (fields |> TableFields.fromJObject) }
+          )
           |> Write
           |> Some
       | InsertOrReplaceRequest (table, partitionKey, rowKey, fields) ->
-          InsertOrReplace
-            (table,
-             { Keys =
-                 { PartitionKey = partitionKey
-                   RowKey = rowKey }
-               Fields = (fields |> TableFields.fromJObject) })
+          InsertOrReplace(
+            table,
+            { Keys =
+                { PartitionKey = partitionKey
+                  RowKey = rowKey }
+              Fields = (fields |> TableFields.fromJObject) }
+          )
           |> Write
           |> Some
       | InsertRequest (table, partitionKey, rowKey, fields) ->
-          Insert
-            (table,
-             { Keys =
-                 { PartitionKey = partitionKey
-                   RowKey = rowKey }
-               Fields = (fields |> TableFields.fromJObject) })
+          Insert(
+            table,
+            { Keys =
+                { PartitionKey = partitionKey
+                  RowKey = rowKey }
+              Fields = (fields |> TableFields.fromJObject) }
+          )
           |> Write
           |> Some
       | ReplaceRequest (table, partitionKey, rowKey, etag, fields) ->
-          Replace
-            (table,
-             etag,
-             { Keys =
-                 { PartitionKey = partitionKey
-                   RowKey = rowKey }
-               Fields = (fields |> TableFields.fromJObject) })
+          Replace(
+            table,
+            etag,
+            { Keys =
+                { PartitionKey = partitionKey
+                  RowKey = rowKey }
+              Fields = (fields |> TableFields.fromJObject) }
+          )
           |> Write
           |> Some
       | MergeRequest (table, partitionKey, rowKey, etag, fields) ->
-          Merge
-            (table,
-             etag,
-             { Keys =
-                 { PartitionKey = partitionKey
-                   RowKey = rowKey }
-               Fields = (fields |> TableFields.fromJObject) })
+          Merge(
+            table,
+            etag,
+            { Keys =
+                { PartitionKey = partitionKey
+                  RowKey = rowKey }
+              Fields = (fields |> TableFields.fromJObject) }
+          )
           |> Write
           |> Some
       | DeleteRequest (table, partitionKey, rowKey, etag) ->
-          Delete
-            (table,
-             etag,
-             { PartitionKey = partitionKey
-               RowKey = rowKey })
+          Delete(
+            table,
+            etag,
+            { PartitionKey = partitionKey
+              RowKey = rowKey }
+          )
           |> Write
           |> Some
       | GetRequest (table, partitionKey, rowKey) ->
-          Get
-            (table,
-             { PartitionKey = partitionKey
-               RowKey = rowKey })
+          Get(
+            table,
+            { PartitionKey = partitionKey
+              RowKey = rowKey }
+          )
           |> Read
           |> Some
       | QueryRequest (table, select, filter, top, nextPartitionKey, nextRowKey) ->
@@ -176,29 +189,31 @@ module HttpContext =
 
           match filter with
           | None ->
-              Query
-                ({ Table = table
-                   Select = select
-                   Filter = Filter.All
-                   Top = top
-                   Continuation = continuation })
+              Query(
+                { Table = table
+                  Select = select
+                  Filter = Filter.All
+                  Top = top
+                  Continuation = continuation }
+              )
               |> Read
               |> Some
           | Some filter ->
               match FilterParser.parse filter with
               | Ok filter ->
-                  Query
-                    ({ Table = table
-                       Select = select
-                       Filter = filter
-                       Top = top
-                       Continuation = continuation })
+                  Query(
+                    { Table = table
+                      Select = select
+                      Filter = filter
+                      Top = top
+                      Continuation = continuation }
+                  )
                   |> Read
                   |> Some
-              | Error error ->
-                  None
+              | Error error -> None
       | BatchRequest requests ->
           let commands = requests |> List.map (toCommand)
+
           match commands |> List.forall (Option.isSome) with
           | true ->
               { BatchCommand.Commands =
@@ -209,16 +224,15 @@ module HttpContext =
               |> Some
           | _ -> None
 
-      | request ->
-          None
+      | request -> None
 
   let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) =
     task {
       try
         do! inner ctx
-      with ex ->
-        ctx.Response.StatusCode <- 500
-    } :> Task
+      with ex -> ctx.Response.StatusCode <- 500
+    }
+    :> Task
 
   let httpHandler commandHandler (ctx: HttpContext) =
     ctx.Request
@@ -227,4 +241,5 @@ module HttpContext =
     |> Option.map commandHandler
     |> Option.defaultValue CommandResult.NotFoundResponse
     |> HttpResponse.fromCommandResponse
-    |> HttpResponse.applyToCtx ctx :> Task
+    |> HttpResponse.applyToCtx ctx
+    :> Task

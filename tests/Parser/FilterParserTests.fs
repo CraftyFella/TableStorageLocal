@@ -69,9 +69,13 @@ let filterParserTests =
           |> FilterParser.parse
 
         let expected =
-          Ok
-            (Filter.Property
-              ("Field", QueryComparison.Equal, FieldValue.Guid(Guid.Parse("d80d1dea-830a-43ab-bcc9-01386e037469"))))
+          Ok(
+            Filter.Property(
+              "Field",
+              QueryComparison.Equal,
+              FieldValue.Guid(Guid.Parse("d80d1dea-830a-43ab-bcc9-01386e037469"))
+            )
+          )
 
         Expect.equal actual expected "unexpected result"
       }
@@ -83,11 +87,13 @@ let filterParserTests =
           |> FilterParser.parse
 
         let expected =
-          Ok
-            (Filter.Property
-              ("Field",
-               QueryComparison.GreaterThanOrEqual,
-               FieldValue.Date(DateTimeOffset.Parse("2000-10-01T01:11:22.931Z"))))
+          Ok(
+            Filter.Property(
+              "Field",
+              QueryComparison.GreaterThanOrEqual,
+              FieldValue.Date(DateTimeOffset.Parse("2000-10-01T01:11:22.931Z"))
+            )
+          )
 
         Expect.equal actual expected "unexpected result"
       }
@@ -148,15 +154,17 @@ let filterParserTests =
           "Field eq binary'aGVsbG8='" |> FilterParser.parse
 
         let expected =
-          Ok
-            (Filter.Property
-              ("Field",
-               QueryComparison.Equal,
-               FieldValue.Binary [| 104uy
-                                    101uy
-                                    108uy
-                                    108uy
-                                    111uy |]))
+          Ok(
+            Filter.Property(
+              "Field",
+              QueryComparison.Equal,
+              FieldValue.Binary [| 104uy
+                                   101uy
+                                   108uy
+                                   108uy
+                                   111uy |]
+            )
+          )
 
         Expect.equal actual expected "unexpected result"
       }
@@ -168,11 +176,13 @@ let filterParserTests =
           |> FilterParser.parse
 
         let expected =
-          Ok
-            (Filter.Combined
-              (Filter.PartitionKey(QueryComparison.Equal, "pk"),
-               TableOperators.And,
-               Filter.RowKey(QueryComparison.Equal, "rk")))
+          Ok(
+            Filter.Combined(
+              Filter.PartitionKey(QueryComparison.Equal, "pk"),
+              TableOperators.And,
+              Filter.RowKey(QueryComparison.Equal, "rk")
+            )
+          )
 
         Expect.equal left expected "unexpected result"
       }
@@ -184,11 +194,13 @@ let filterParserTests =
           |> FilterParser.parse
 
         let expected =
-          Ok
-            (Filter.Combined
-              (Filter.PartitionKey(QueryComparison.Equal, "1"),
-               TableOperators.And,
-               Filter.Property("Name", QueryComparison.Equal, FieldValue.String "Dave")))
+          Ok(
+            Filter.Combined(
+              Filter.PartitionKey(QueryComparison.Equal, "1"),
+              TableOperators.And,
+              Filter.Property("Name", QueryComparison.Equal, FieldValue.String "Dave")
+            )
+          )
 
         Expect.equal actual expected "unexpected result"
       }
@@ -200,11 +212,13 @@ let filterParserTests =
           |> FilterParser.parse
 
         let expected =
-          Ok
-            (Filter.Combined
-              (Filter.PartitionKey(QueryComparison.Equal, "pk"),
-               TableOperators.Or,
-               Filter.RowKey(QueryComparison.Equal, "rk")))
+          Ok(
+            Filter.Combined(
+              Filter.PartitionKey(QueryComparison.Equal, "pk"),
+              TableOperators.Or,
+              Filter.RowKey(QueryComparison.Equal, "rk")
+            )
+          )
 
         Expect.equal left expected "unexpected result"
       }

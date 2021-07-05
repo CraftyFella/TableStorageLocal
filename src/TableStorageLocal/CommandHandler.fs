@@ -38,24 +38,29 @@ module CommandHandler =
         |> TableRow.withETag etag
         |> table.Upsert
         |> ignore
+
         WriteCommandResponse.Ack(row.Keys, etag)
     | InsertOrReplace (table, row) ->
         let table = db.GetTable table
         let etag = ETag.create ()
+
         row
         |> TableRow.withETag etag
         |> table.Upsert
         |> ignore
+
         WriteCommandResponse.Ack(row.Keys, etag)
     | Insert (table, row) ->
         let table = db.GetTable table
         let etag = ETag.create ()
+
         match row |> TableRow.withETag etag |> table.TryInsert with
         | true -> WriteCommandResponse.Ack(row.Keys, etag)
         | false -> WriteCommandResponse.Conflict EntityAlreadyExists
     | Replace (table, existingETag, row) ->
         let table = db.GetTable table
         let etag = ETag.create ()
+
         match row.Id |> table.TryFindById with
         | TableRow.ExistsWithMatchingETag existingETag existingRow ->
             match table.Update(row |> TableRow.withETag etag) with
@@ -67,12 +72,17 @@ module CommandHandler =
     | Merge (table, existingETag, row) ->
         let table = db.GetTable table
         let etag = ETag.create ()
+
         match row.Id |> table.TryFindById with
         | TableRow.ExistsWithMatchingETag existingETag existingRow ->
-            match table.Update
-                    (row
-                     |> TableRow.merge existingRow
-                     |> TableRow.withETag etag) with
+            match
+              table.Update
+                (
+                  row
+                  |> TableRow.merge existingRow
+                  |> TableRow.withETag etag
+                )
+              with
             | true -> WriteCommandResponse.Ack(row.Keys, etag)
             | _ -> WriteCommandResponse.NotFound ResourceNotFound
         | TableRow.ExistsWithDifferentETag existingETag _ ->
@@ -80,10 +90,12 @@ module CommandHandler =
         | _ -> WriteCommandResponse.NotFound ResourceNotFound
     | Delete (table, existingETag, keys) ->
         let table = db.GetTable table
+
         match keys.Id |> table.TryFindById with
         | TableRow.ExistsWithMatchingETag existingETag _ ->
             table.DeleteMany(keys |> TableKeys.toBsonExpression)
             |> ignore
+
             WriteCommandResponse.Ack(keys, Missing)
         | TableRow.ExistsWithDifferentETag existingETag _ ->
             WriteCommandResponse.PreconditionFailed UpdateConditionNotSatisfied
@@ -94,19 +106,21 @@ module CommandHandler =
     | Select.All -> tableRows
     | Select.Fields fields ->
         tableRows
-        |> Array.map (fun f ->
+        |> Array.map
+             (fun f ->
 
-             let filteredFields =
-               f.Fields
-               |> Seq.filter (fun kvp -> fields |> List.contains kvp.Key)
-               |> Dictionary
+               let filteredFields =
+                 f.Fields
+                 |> Seq.filter (fun kvp -> fields |> List.contains kvp.Key)
+                 |> Dictionary
 
-             { f with Fields = filteredFields })
+               { f with Fields = filteredFields })
 
   let private readCommandHandler (db: ILiteDatabase) command =
     match command with
     | Get (table, keys) ->
         let table = db.GetTable table
+
         match keys.Id |> table.TryFindById with
         | Some row -> GetResponse(row)
         | _ -> ReadCommandResponse.NotFoundResponse
@@ -146,6 +160,7 @@ module CommandHandler =
               commandResults
           | false ->
               db.Rollback() |> ignore
+
               commandResults
               |> List.filter (WriteCommandResponse.isSuccess >> not)
 

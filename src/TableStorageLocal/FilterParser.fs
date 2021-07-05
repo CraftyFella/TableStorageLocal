@@ -37,21 +37,28 @@ module FilterParser =
 
       let numberParser =
         let parser = numberLiteral numberFormat "number"
+
         fun stream ->
           let reply = parser stream
+
           if reply.Status = Ok then
             let nl = reply.Result // the parsed NumberLiteral
+
             if nl.SuffixLength = 0
                || (nl.IsInteger
                    && nl.SuffixLength = 1
                    && nl.SuffixChar1 = 'L') then
               try
                 let result =
-                  if nl.IsInteger
-                  then if nl.SuffixLength = 0 then FieldValue.Int(int nl.String) else FieldValue.Long(int64 nl.String)
-                  else if nl.IsHexadecimal
-                  then FieldValue.Double(floatOfHexString nl.String)
-                  else FieldValue.Double(float nl.String)
+                  if nl.IsInteger then
+                    if nl.SuffixLength = 0 then
+                      FieldValue.Int(int nl.String)
+                    else
+                      FieldValue.Long(int64 nl.String)
+                  else if nl.IsHexadecimal then
+                    FieldValue.Double(floatOfHexString nl.String)
+                  else
+                    FieldValue.Double(float nl.String)
 
                 Reply(result)
               with :? System.OverflowException as e ->
@@ -60,22 +67,24 @@ module FilterParser =
             else
               stream.Skip(-nl.SuffixLength)
               Reply(Error, messageError "invalid number suffix")
-          else // reconstruct error reply
+          else
             Reply(reply.Status, reply.Error)
 
       let dateParser =
         let prefix = pstring "datetime"
         let quote = pchar '\''
+
         prefix
         >>. (between quote quote manyCharsNotSingleQuote
              >>= (fun s ->
-             match DateTimeOffset.TryParse s with
-             | true, result -> preturn (FieldValue.Date result)
-             | _ -> fail "Expected a Date"))
+               match DateTimeOffset.TryParse s with
+               | true, result -> preturn (FieldValue.Date result)
+               | _ -> fail "Expected a Date"))
 
       let binaryParser =
         let prefix = pstring "binary"
         let quote = pchar '\''
+
         prefix
         >>. (between quote quote (regex "(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?")
              |>> (Convert.FromBase64String >> FieldValue.Binary))
@@ -83,12 +92,14 @@ module FilterParser =
       let guidParser =
         let prefix = pstring "guid"
         let quote = pchar '\''
+
         prefix
         >>. (between quote quote (regex "(?im)^[{(]?[0-9A-F]{8}[-]?(?:[0-9A-F]{4}[-]?){3}[0-9A-F]{12}[)}]?")
              |>> (Guid.Parse >> FieldValue.Guid))
 
       let stringParser =
         let quote = pchar '\''
+
         between quote quote manyCharsNotSingleQuote
         |>> (FieldValue.String)
 
@@ -116,15 +127,12 @@ module FilterParser =
           manyLettersOrNumbers .>> spaces <?> "Name"
 
         let queryComparison =
-          queryComparisonParser
-          .>> spaces
+          queryComparisonParser .>> spaces
           <?> "QueryComparison"
 
         let filterValue = FieldValue.parser <?> "FilterValue"
 
-        name
-        .>>. queryComparison
-        .>>. filterValue
+        name .>>. queryComparison .>>. filterValue
         |>> (fun ((n, qc), fv) -> Filter.Property(n, qc, fv))
 
       let partitionKeyParser =
@@ -132,16 +140,13 @@ module FilterParser =
         let nameAndSpaces = name .>> spaces <?> "Name"
 
         let queryComparison =
-          queryComparisonParser
-          .>> spaces
+          queryComparisonParser .>> spaces
           <?> "QueryComparison"
 
         let filterValue =
           FieldValue.stringParser <?> "FilterValue"
 
-        nameAndSpaces
-        >>. queryComparison
-        .>>. filterValue
+        nameAndSpaces >>. queryComparison .>>. filterValue
         |>> (fun (qc, (FieldValue.String (fv))) -> Filter.PartitionKey(qc, fv))
 
       let rowKeyParser =
@@ -149,16 +154,13 @@ module FilterParser =
         let nameAndSpaces = name .>> spaces <?> "Name"
 
         let queryComparison =
-          queryComparisonParser
-          .>> spaces
+          queryComparisonParser .>> spaces
           <?> "QueryComparison"
 
         let filterValue =
           FieldValue.stringParser <?> "FilterValue"
 
-        nameAndSpaces
-        >>. queryComparison
-        .>>. filterValue
+        nameAndSpaces >>. queryComparison .>>. filterValue
         |>> (fun (qc, (FieldValue.String (fv))) -> Filter.RowKey(qc, fv))
 
 
@@ -167,13 +169,25 @@ module FilterParser =
 
       let parser = opp.ExpressionParser
 
-      opp.AddOperator
-        (InfixOperator
-          ("and", spaces, 1, Associativity.Left, (fun left right -> Filter.Combined(left, TableOperators.And, right))))
+      opp.AddOperator(
+        InfixOperator(
+          "and",
+          spaces,
+          1,
+          Associativity.Left,
+          (fun left right -> Filter.Combined(left, TableOperators.And, right))
+        )
+      )
 
-      opp.AddOperator
-        (InfixOperator
-          ("or", spaces, 2, Associativity.Left, (fun left right -> Filter.Combined(left, TableOperators.Or, right))))
+      opp.AddOperator(
+        InfixOperator(
+          "or",
+          spaces,
+          2,
+          Associativity.Left,
+          (fun left right -> Filter.Combined(left, TableOperators.Or, right))
+        )
+      )
 
       let nonCombineParsers =
         choice [ partitionKeyParser
