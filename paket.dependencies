@@ -1,8 +1,9 @@
 strategy: min
 source https://api.nuget.org/v3/index.json
 storage: none
-framework: netstandard2.1, netcoreapp3.1
+framework: netstandard2.1, net5.0
 
+nuget Azure.Data.Tables
 nuget Expecto
 nuget LiteDB
 nuget Microsoft.Azure.Cosmos.Table
