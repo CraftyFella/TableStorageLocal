@@ -196,7 +196,6 @@ module HttpContext =
                   |> Read
                   |> Some
               | Error error ->
-                  printfn "Filter: %A;\nError: %A" filter error
                   None
       | BatchRequest requests ->
           let commands = requests |> List.map (toCommand)
@@ -211,7 +210,6 @@ module HttpContext =
           | _ -> None
 
       | request ->
-          printfn "Unknown request %A" request
           None
 
   let exceptionLoggingHttpHandler (inner: HttpContext -> Task) (ctx: HttpContext) =
@@ -219,7 +217,6 @@ module HttpContext =
       try
         do! inner ctx
       with ex ->
-        printfn "Ouch %A" ex
         ctx.Response.StatusCode <- 500
     } :> Task
 
